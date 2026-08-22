@@ -1,0 +1,91 @@
+{
+	"id": "iphone-orbit",
+	"output": {
+		"width": 1080,
+		"height": 1920,
+		"fps": 60,
+		"durationFrames": 120
+	},
+	"variables": {
+		"screenMedia": "/assets/textures/placeholder.png",
+		"chassisColor": "#242426",
+		"backgroundColor": "#0d0f12"
+	},
+	"device": {
+		"modelUrl": "/assets/models/apple_iphone_15_pro_max_black.glb",
+		"meshBindings": {
+			"screen": "Screen_Glass",
+			"chassis": "Body_Frame"
+		},
+		"materials": {
+			"chassis": {
+				"metalness": 0.85,
+				"roughness": 0.25
+			},
+			"screen": {
+				"roughness": 0.1
+			}
+		},
+		"keyframes": {
+			"position": [
+				{
+					"frame": 0,
+					"value": [
+						0,
+						-0.4,
+						0
+					]
+				},
+				{
+					"frame": 120,
+					"value": [
+						0,
+						0.2,
+						0
+					]
+				}
+			],
+			"rotation": [
+				{
+					"frame": 0,
+					"value": [
+						0,
+						-0.6,
+						0.1
+					]
+				},
+				{
+					"frame": 120,
+					"value": [
+						0,
+						0.5,
+						-0.05
+					]
+				}
+			]
+		}
+	},
+	"camera": {
+		"fov": 35,
+		"keyframes": {
+			"position": [
+				{
+					"frame": 0,
+					"value": [
+						0,
+						0,
+						4.2
+					]
+				},
+				{
+					"frame": 120,
+					"value": [
+						0,
+						0,
+						3.6
+					]
+				}
+			]
+		}
+	}
+}
