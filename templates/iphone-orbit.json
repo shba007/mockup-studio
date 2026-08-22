@@ -1,21 +1,21 @@
 {
-	"id": "iphone-orbit",
+	"id": "iphone-helix-showcase",
 	"output": {
 		"width": 1080,
 		"height": 1920,
 		"fps": 60,
-		"durationFrames": 120
+		"durationFrames": 450
 	},
 	"variables": {
 		"screenMedia": "/assets/textures/placeholder.png",
 		"chassisColor": "#242426",
-		"backgroundColor": "#0d0f12"
+		"backgroundGradient": "radial-gradient(circle at center, #5945EA 0%, #2B2B2B 100%)"
 	},
 	"device": {
 		"modelUrl": "/assets/models/apple_iphone_15_pro_max_black.glb",
 		"meshBindings": {
-			"screen": "Screen_Glass",
-			"chassis": "Body_Frame"
+			"screen": "pUKfZsazmcpEiU",
+			"chassis": "PpwUTnTFZJXxCoE"
 		},
 		"materials": {
 			"chassis": {
@@ -32,16 +32,35 @@
 					"frame": 0,
 					"value": [
 						0,
-						-0.4,
-						0
-					]
+						-4.5,
+						-0.4
+					],
+					"easing": "easeOutCubic"
 				},
 				{
 					"frame": 120,
 					"value": [
 						0,
-						0.2,
+						0,
 						0
+					],
+					"easing": "linear"
+				},
+				{
+					"frame": 280,
+					"value": [
+						0,
+						0,
+						0
+					],
+					"easing": "easeInOutCubic"
+				},
+				{
+					"frame": 450,
+					"value": [
+						0,
+						-4.5,
+						-0.4
 					]
 				}
 			],
@@ -49,24 +68,43 @@
 				{
 					"frame": 0,
 					"value": [
-						0,
-						-0.6,
-						0.1
-					]
+						0.4,
+						-3.1416,
+						-0.25
+					],
+					"easing": "easeOutCubic"
 				},
 				{
 					"frame": 120,
 					"value": [
 						0,
-						0.5,
-						-0.05
+						3.1416,
+						0
+					],
+					"easing": "linear"
+				},
+				{
+					"frame": 280,
+					"value": [
+						0,
+						3.1416,
+						0
+					],
+					"easing": "easeInOutCubic"
+				},
+				{
+					"frame": 450,
+					"value": [
+						-0.4,
+						9.4248,
+						0.25
 					]
 				}
 			]
 		}
 	},
 	"camera": {
-		"fov": 35,
+		"fov": 34,
 		"keyframes": {
 			"position": [
 				{
@@ -74,15 +112,34 @@
 					"value": [
 						0,
 						0,
-						4.2
-					]
+						6.0
+					],
+					"easing": "easeOutCubic"
 				},
 				{
 					"frame": 120,
 					"value": [
 						0,
 						0,
-						3.6
+						5.5
+					],
+					"easing": "linear"
+				},
+				{
+					"frame": 280,
+					"value": [
+						0,
+						0,
+						5.5
+					],
+					"easing": "easeInOutCubic"
+				},
+				{
+					"frame": 450,
+					"value": [
+						0,
+						0,
+						6.0
 					]
 				}
 			]
