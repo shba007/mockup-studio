@@ -1,23 +1,24 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed } from 'vue'
 
 const props = defineProps<{
-  currentFrame: number;
-  durationFrames: number;
-  fps: number;
-  isPlaying: boolean;
-  config: Record<string, any>;
-}>();
+  currentFrame: number
+  durationFrames: number
+  fps: number
+  isPlaying: boolean
+  config: Record<string, unknown>
+}>()
 
 const emit = defineEmits<{
-  (e: 'update:currentFrame', frame: number): void;
-  (e: 'togglePlay'): void;
-  (e: 'seek', frame: number): void;
-}>();
+  (e: 'update:currentFrame', frame: number): void
+  (e: 'togglePlay'): void
+  (e: 'seek', frame: number): void
+  (e: 'exportSequence'): void
+}>()
 
 const tracks = computed(() => {
-  const device = props.config.device?.keyframes || {};
-  const camera = props.config.camera?.keyframes || {};
+  const device = props.config.device?.keyframes || {}
+  const camera = props.config.camera?.keyframes || {}
 
   return [
     {
@@ -32,18 +33,18 @@ const tracks = computed(() => {
       name: 'Camera Position',
       frames: (camera.position || []).map((k: { frame: number }) => k.frame),
     },
-  ];
-});
+  ]
+})
 
-const progressPercent = computed(() => (props.currentFrame / props.durationFrames) * 100);
-const currentTimeSec = computed(() => (props.currentFrame / props.fps).toFixed(2));
-const totalTimeSec = computed(() => (props.durationFrames / props.fps).toFixed(2));
+const progressPercent = computed(() => (props.currentFrame / props.durationFrames) * 100)
+const currentTimeSec = computed(() => (props.currentFrame / props.fps).toFixed(2))
+const totalTimeSec = computed(() => (props.durationFrames / props.fps).toFixed(2))
 
 function handleTimelineClick(event: MouseEvent) {
-  const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-  const clickX = Math.max(0, Math.min(event.clientX - rect.left, rect.width));
-  const targetFrame = Math.round((clickX / rect.width) * props.durationFrames);
-  emit('seek', targetFrame);
+  const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
+  const clickX = Math.max(0, Math.min(event.clientX - rect.left, rect.width))
+  const targetFrame = Math.round((clickX / rect.width) * props.durationFrames)
+  emit('seek', targetFrame)
 }
 </script>
 
@@ -54,8 +55,13 @@ function handleTimelineClick(event: MouseEvent) {
         <button class="control-btn" @click="emit('togglePlay')">
           {{ isPlaying ? '⏸ Pause' : '▶ Play' }}
         </button>
-        <button class="control-btn secondary" @click="emit('seek', 0)">
-          ⏮ Reset
+        <button class="control-btn secondary" @click="emit('seek', 0)">⏮ Reset</button>
+        <button
+          class="control-btn"
+          style="background: #eab308; color: black"
+          @click="emit('exportSequence')"
+        >
+          📷 Export PNG Sequence
         </button>
       </div>
 
@@ -75,9 +81,14 @@ function handleTimelineClick(event: MouseEvent) {
       <div v-for="track in tracks" :key="track.name" class="track-row">
         <span class="track-label">{{ track.name }}</span>
         <div class="track-timeline">
-          <div v-for="frame in track.frames" :key="frame" class="keyframe-diamond"
-            :style="{ left: `${(frame / durationFrames) * 100}%` }" :title="`Frame ${frame}`"
-            @click.stop="emit('seek', frame)"></div>
+          <div
+            v-for="frame in track.frames"
+            :key="frame"
+            class="keyframe-diamond"
+            :style="{ left: `${(frame / durationFrames) * 100}%` }"
+            :title="`Frame ${frame}`"
+            @click.stop="emit('seek', frame)"
+          ></div>
         </div>
       </div>
     </div>
@@ -224,7 +235,9 @@ function handleTimelineClick(event: MouseEvent) {
   border-radius: 1px;
   border: 1px solid #0f172a;
   cursor: pointer;
-  transition: transform 0.15s, background 0.15s;
+  transition:
+    transform 0.15s,
+    background 0.15s;
 }
 
 .keyframe-diamond:hover {
