@@ -3,7 +3,8 @@ import { ref, onMounted, onUnmounted, computed } from 'vue'
 import JSZip from 'jszip'
 import MockupScene from './components/MockupScene.vue'
 import TimelinePanel from './components/TimelinePanel.vue'
-import defaultTemplate from '../templates/iphone-orbit.json'
+
+import defaultTemplate from '../templates/macbook-platform-reveal.json'
 
 const config = ref<Record<string, unknown>>(defaultTemplate)
 const overrides = ref<Record<string, unknown>>({})

@@ -9,6 +9,7 @@ export interface Keyframe {
     | 'easeOutQuad'
     | 'easeInOutQuad'
     | 'easeOutExpo'
+    | 'easeInOutSine'
 }
 
 const EASING_FUNCTIONS: Record<string, (t: number) => number> = {
@@ -19,7 +20,10 @@ const EASING_FUNCTIONS: Record<string, (t: number) => number> = {
   easeOutQuad: (t) => 1 - (1 - t) * (1 - t),
   easeInOutQuad: (t) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2),
   easeOutExpo: (t) => (t === 1 ? 1 : 1 - Math.pow(2, -10 * t)),
+  easeInOutSine: (t) => -(Math.cos(Math.PI * t) - 1) / 2,
 }
+
+// ... Keep evaluateKeyframes exactly the same below
 
 export function evaluateKeyframes(keyframes: Keyframe[], currentFrame: number): number[] {
   if (!keyframes || keyframes.length === 0) return [0, 0, 0]

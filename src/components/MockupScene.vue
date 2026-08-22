@@ -145,8 +145,13 @@ rootGroup.value.add(loadedScene)
 
 const targetScreen = props.config.device.meshBindings?.screen
 const targetChassis = props.config.device.meshBindings?.chassis
+const initialTransforms = new Map()
 
 loadedScene.traverse((child: THREE.Object3D) => {
+  initialTransforms.set(child.name, {
+    rotation: child.rotation.clone(),
+    position: child.position.clone(),
+  })
   const mesh = child as THREE.Mesh
   if (mesh.isMesh) {
     const material = mesh.material as THREE.MeshStandardMaterial
@@ -166,15 +171,12 @@ loadedScene.traverse((child: THREE.Object3D) => {
 
     if (isScreen) {
       mesh.material = new THREE.MeshStandardMaterial({
-        // 1. Set base color to pitch black so ambient light doesn't wash it out
         color: new THREE.Color(0x000000),
 
-        // 2. Use the texture exclusively as a light-emitting source
         emissiveMap: screenTexture,
         emissive: new THREE.Color(0xffffff),
-        emissiveIntensity: 1.0, // 100% of the original image brightness
+        emissiveIntensity: 1.0,
 
-        // 3. Keep roughness low so the glass still catches glossy reflections from directional lights
         roughness: props.config.device.materials?.screen?.roughness ?? 0.1,
         metalness: 0.0,
       })
@@ -190,29 +192,52 @@ loadedScene.traverse((child: THREE.Object3D) => {
   }
 })
 
-// 4. Update timeline frames
 watchEffect(() => {
   const frame = props.currentFrame
-  const pos = evaluateKeyframes(props.config.device.keyframes.position, frame)
-  const rot = evaluateKeyframes(props.config.device.keyframes.rotation, frame)
-  const cam = evaluateKeyframes(props.config.camera.keyframes.position, frame)
+  const config = props.config as unknown
+
+  const pos = evaluateKeyframes(config.device.keyframes.position, frame)
+  const rot = evaluateKeyframes(config.device.keyframes.rotation, frame)
+  const cam = evaluateKeyframes(config.camera.keyframes.position, frame)
 
   devicePosition.value = [pos[0], pos[1], pos[2]]
   deviceRotation.value = [rot[0], rot[1], rot[2]]
   cameraPosition.value = [cam[0], cam[1], cam[2]]
-})
 
-// Safely grab the device pixel ratio (fallback to 1 if window is missing during SSR)
+  const nodeKeyframes = config.device.keyframes.nodes
+  if (nodeKeyframes && loadedScene) {
+    for (const [nodeName, tracks] of Object.entries(nodeKeyframes)) {
+      const targetNode = loadedScene.getObjectByName(nodeName)
+      const initial = initialTransforms.get(nodeName)
+
+      if (targetNode && initial) {
+        if (tracks.rotation) {
+          const nRot = evaluateKeyframes(tracks.rotation, frame)
+          // Apply animation as an OFFSET to the original rotation
+          targetNode.rotation.set(
+            initial.rotation.x + nRot[0],
+            initial.rotation.y + nRot[1],
+            initial.rotation.z + nRot[2],
+          )
+        }
+        if (tracks.position) {
+          const nPos = evaluateKeyframes(tracks.position, frame)
+          // Apply animation as an OFFSET to the original position
+          targetNode.position.set(
+            initial.position.x + nPos[0],
+            initial.position.y + nPos[1],
+            initial.position.z + nPos[2],
+          )
+        }
+      }
+    }
+  }
+})
 const pixelRatio = typeof window !== 'undefined' ? Math.min(window.devicePixelRatio, 2) : 1
 </script>
 
 <template>
   <div class="scene-viewport">
-    <!--
-      1. pixel-ratio as a direct prop restores Retina/4K sharpness
-      2. No tone-mapping keeps the UI whites pure and contrast deep
-      3. output-color-space ensures your hex codes are strictly honored
-    -->
     <TresCanvas
       window-size
       :pixel-ratio="pixelRatio"
