@@ -7,6 +7,7 @@
       "dependencies": {
         "@tresjs/cientos": "^5.8.1",
         "@tresjs/core": "^5.8.3",
+        "@tresjs/post-processing": "^3.7.4",
         "execa": "^10.0.1",
         "jszip": "^3.10.1",
         "three": "^0.185.1",
@@ -246,6 +247,8 @@
     "@tresjs/cientos": ["@tresjs/cientos@5.8.1", "", { "dependencies": { "@vueuse/core": "^14.3.0", "camera-controls": "^3.1.2", "stats-gl": "^4.1.0", "stats.js": "^0.17.0", "three-custom-shader-material": "^6.4.0", "three-mesh-bvh": "^0.9.10", "three-stdlib": "^2.36.1" }, "peerDependencies": { "@tresjs/core": "5.8.3", "three": ">=0.133", "vue": ">=3.5.17" } }, "sha512-2VbM2+Tok3LVDCWkPisGo+nq6ppHxxSt+jhCRrQAqT8YxEbifAETefW9gdHwad9qYy1jCRyrounN2fwtuLhf9A=="],
 
     "@tresjs/core": ["@tresjs/core@5.8.3", "", { "dependencies": { "@pmndrs/pointer-events": "^6.6.30", "@vue/devtools-api": "^8.1.2", "@vueuse/core": "^14.3.0", "radashi": "^12.9.1" }, "peerDependencies": { "three": ">=0.133", "vue": ">=3.4" } }, "sha512-1I5Y/qJ1z5JnObUwtkCnKFiCQw2cS2tp0KH18FgBQAD6quQ87eGzHrWThrdcuv6RFAgwuRTpTH7qBNWmtW3tSQ=="],
+
+    "@tresjs/post-processing": ["@tresjs/post-processing@3.7.4", "", { "dependencies": { "@vueuse/core": "^14.3.0", "postprocessing": "^6.39.1" }, "peerDependencies": { "@tresjs/core": "5.8.3", "three": ">=0.169", "vue": ">=3.4" } }, "sha512-iugapXYqn7KYfhr4cxsgC4bbfuGgcFmZ91L9YSmK5Ecba7WAVg3ZfVjtrwDPafYfTp8Dsgk2STELbRHqattXsg=="],
 
     "@tsconfig/node24": ["@tsconfig/node24@24.0.5", "", {}, "sha512-DWC54fGPuhZgg3Ighg4Y/A/bA3ZdB5hnzAuv/MkQ/X85sVsBsMQxu8t7khutdYeiNksBbFdDyeqv1HSW2Zl8aA=="],
 
@@ -690,6 +693,8 @@
     "pngjs": ["pngjs@7.0.0", "", {}, "sha512-LKWqWJRhstyYo9pGvgor/ivk2w94eSjE3RGVuzLGlr3NmD8bf7RcYGze1mNdEHRP6TRP6rMuDHk5t44hnTRyow=="],
 
     "postcss": ["postcss@8.5.26", "", { "dependencies": { "nanoid": "^3.3.17", "picocolors": "^1.1.1", "source-map-js": "^1.2.1" } }, "sha512-u82N74LFzG8ca+dD8puPnplTXoGH4fTPpVGuIbt36G3qvNlkvfD0lEAZSxaly3KX8TS/L1A1gsCEmvKmBcVbkQ=="],
+
+    "postprocessing": ["postprocessing@6.39.4", "", { "peerDependencies": { "three": ">= 0.168.0 < 0.186.0" } }, "sha512-oAS/PjAbc/xT3OzjUrGsorJ4J064XwhVD2t0OwKLP/E8QwDMUJ0oOv6ZI1SYMtLchv4g0ySEx+JcLy92+48vlA=="],
 
     "potpack": ["potpack@1.0.2", "", {}, "sha512-choctRBIV9EMT9WGAZHn3V7t0Z2pMQyl0EZE6pFc/6ml3ssw7Dlf/oAOvFwjm1HVsqfQN8GfeFyJ+d8tRzqueQ=="],
 

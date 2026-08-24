@@ -20,6 +20,7 @@
   "dependencies": {
     "@tresjs/cientos": "^5.8.1",
     "@tresjs/core": "^5.8.3",
+    "@tresjs/post-processing": "^3.7.4",
     "execa": "^10.0.1",
     "jszip": "^3.10.1",
     "three": "^0.185.1",

@@ -17,23 +17,30 @@ const emit = defineEmits<{
 }>()
 
 const tracks = computed(() => {
-  const device = props.config.device?.keyframes || {}
   const camera = props.config.camera?.keyframes || {}
+  const trackList = []
+  const devices = props.config.devices || (props.config.device ? [props.config.device] : [])
 
-  return [
-    {
-      name: 'Device Position',
-      frames: (device.position || []).map((k: { frame: number }) => k.frame),
-    },
-    {
-      name: 'Device Rotation',
-      frames: (device.rotation || []).map((k: { frame: number }) => k.frame),
-    },
-    {
+  devices.forEach((dev: unknown, index: number) => {
+    const name = dev.name || `Device ${index + 1}`
+    const kf = dev.keyframes || {}
+
+    if (kf.position) {
+      trackList.push({ name: `${name} Pos`, frames: kf.position.map((k: unknown) => k.frame) })
+    }
+    if (kf.rotation) {
+      trackList.push({ name: `${name} Rot`, frames: kf.rotation.map((k: unknown) => k.frame) })
+    }
+  })
+
+  if (camera.position) {
+    trackList.push({
       name: 'Camera Position',
-      frames: (camera.position || []).map((k: { frame: number }) => k.frame),
-    },
-  ]
+      frames: camera.position.map((k: unknown) => k.frame),
+    })
+  }
+
+  return trackList
 })
 
 const progressPercent = computed(() => (props.currentFrame / props.durationFrames) * 100)
@@ -98,7 +105,6 @@ function handleTimelineClick(event: MouseEvent) {
 <style scoped>
 .timeline-container {
   position: absolute;
-  /* Changed to absolute to stay inside app-container */
   bottom: 24px;
   left: 50%;
   transform: translateX(-50%);

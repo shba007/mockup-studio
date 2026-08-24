@@ -8,8 +8,8 @@
   },
   "variables": {
     "screenMedia": "/assets/textures/placeholder.png",
-    "chassisColor": "#C0C0C0",
-    "backgroundGradient": "radial-gradient(circle at top right, #E0E0E0 0%, #0A0A0A 100%)"
+    "chassisColor": "#535150",
+    "backgroundGradient": "radial-gradient(circle at center, #5945EA 0%, #2B2B2B 100%)"
   },
   "device": {
     "modelUrl": "/assets/models/macbook_pro_m3_16_inch_2024.glb",

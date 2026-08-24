@@ -4,23 +4,35 @@ import JSZip from 'jszip'
 import MockupScene from './components/MockupScene.vue'
 import TimelinePanel from './components/TimelinePanel.vue'
 
-import defaultTemplate from '../templates/macbook-platform-reveal.json'
+import multiIphoneFanout from '../templates/multi-iphone-fanout.json'
+import macbookPlatformReveal from '../templates/macbook-platform-reveal.json'
+import iphoneHelixShowcase from '../templates/iphone-helix-showcase.json'
 
-const config = ref<Record<string, unknown>>(defaultTemplate)
+const templateLibrary: Record<string, unknown> = {
+  'Multi iPhone Fanout': multiIphoneFanout,
+  'MacBook Platform Reveal': macbookPlatformReveal,
+  'iPhone Helix Showcase': iphoneHelixShowcase,
+}
+
+const selectedTemplateKey = ref('Multi iPhone Fanout')
+const config = ref<Record<string, unknown>>(templateLibrary[selectedTemplateKey.value])
 const overrides = ref<Record<string, unknown>>({})
 const isReady = ref(false)
-
 const currentFrame = ref(0)
 const isPlaying = ref(true)
 const showTimeline = ref(false)
 const isExporting = ref(false)
 const exportProgress = ref(0)
-
 let animationFrameId: number | null = null
 let lastTimestamp = 0
 
 const durationFrames = computed(() => config.value?.output?.durationFrames || 120)
 const fps = computed(() => config.value?.output?.fps || 60)
+
+function handleTemplateChange() {
+  config.value = templateLibrary[selectedTemplateKey.value]
+  currentFrame.value = 0
+}
 
 function seek(frame: number) {
   currentFrame.value = Math.max(0, Math.min(frame, durationFrames.value))
@@ -56,7 +68,6 @@ async function exportSequence() {
   for (let i = 0; i <= durationFrames.value; i++) {
     seek(i)
     exportProgress.value = Math.round((i / durationFrames.value) * 100)
-
     await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
 
     const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'))
@@ -69,12 +80,10 @@ async function exportSequence() {
   exportProgress.value = 100
   const zipBlob = await zip.generateAsync({ type: 'blob' })
   const downloadUrl = URL.createObjectURL(zipBlob)
-
   const a = document.createElement('a')
   a.href = downloadUrl
-  a.download = `${config.value.id}-frames.zip`
+  a.download = `${config.value.id || 'export'}-frames.zip`
   a.click()
-
   URL.revokeObjectURL(downloadUrl)
   isExporting.value = false
 }
@@ -106,6 +115,14 @@ onUnmounted(() => {
 
 <template>
   <div class="app-container">
+    <div v-if="!isExporting && isReady" class="template-selector">
+      <select v-model="selectedTemplateKey" @change="handleTemplateChange">
+        <option v-for="key in Object.keys(templateLibrary)" :key="key" :value="key">
+          {{ key }}
+        </option>
+      </select>
+    </div>
+
     <div v-if="isExporting" class="export-overlay">
       <div class="spinner"></div>
       <h2>Rendering Frame Sequence...</h2>
@@ -118,6 +135,7 @@ onUnmounted(() => {
     <Suspense>
       <MockupScene
         v-if="isReady"
+        :key="config.id"
         :config="config"
         :overrides="overrides"
         :current-frame="currentFrame"
@@ -147,9 +165,38 @@ onUnmounted(() => {
 .app-container {
   width: 100vw;
   height: 100vh;
-  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: #000;
-  position: relative;
+  overflow: hidden;
+}
+
+.template-selector {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  z-index: 1000;
+}
+
+.template-selector select {
+  background: rgba(18, 18, 24, 0.85);
+  color: #e2e8f0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 13px;
+  outline: none;
+  cursor: pointer;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(12px);
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.template-selector select:hover {
+  border-color: rgba(255, 255, 255, 0.25);
 }
 
 .loading {
