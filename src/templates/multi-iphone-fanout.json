@@ -13,7 +13,7 @@
   "devices": [
     {
       "name": "Center Hero",
-      "modelUrl": "/models/apple_iphone_15_pro_max_black.glb",
+      "modelUrl": "/models/apple-iphone-15-pro-max-black.glb",
       "meshBindings": {
         "screen": "pIJKfZsazmcpEiU"
       },
@@ -63,7 +63,7 @@
     },
     {
       "name": "Mid Left",
-      "modelUrl": "/models/apple_iphone_15_pro_max_black.glb",
+      "modelUrl": "/models/apple-iphone-15-pro-max-black.glb",
       "meshBindings": {
         "screen": "pIJKfZsazmcpEiU",
         "chassis": "oZRkkORNzkufnGD"
@@ -124,7 +124,7 @@
     },
     {
       "name": "Far Left",
-      "modelUrl": "/models/apple_iphone_15_pro_max_black.glb",
+      "modelUrl": "/models/apple-iphone-15-pro-max-black.glb",
       "meshBindings": {
         "screen": "pIJKfZsazmcpEiU",
         "chassis": "oZRkkORNzkufnGD"
@@ -185,7 +185,7 @@
     },
     {
       "name": "Mid Right",
-      "modelUrl": "/models/apple_iphone_15_pro_max_black.glb",
+      "modelUrl": "/models/apple-iphone-15-pro-max-black.glb",
       "meshBindings": {
         "screen": "pIJKfZsazmcpEiU",
         "chassis": "oZRkkORNzkufnGD"
@@ -246,7 +246,7 @@
     },
     {
       "name": "Far Right",
-      "modelUrl": "/models/apple_iphone_15_pro_max_black.glb",
+      "modelUrl": "/models/apple-iphone-15-pro-max-black.glb",
       "meshBindings": {
         "screen": "pIJKfZsazmcpEiU",
         "chassis": "oZRkkORNzkufnGD"

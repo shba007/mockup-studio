@@ -5,20 +5,12 @@ import MockupScene from './components/MockupScene.vue'
 import TimelinePanel from './components/TimelinePanel.vue'
 import { useAppUpdater } from './composables/useAppUpdater'
 
-import multiIphoneFanout from './templates/multi-iphone-fanout.json'
-import macbookPlatformReveal from './templates/macbook-platform-reveal.json'
-import iphoneHelixShowcase from './templates/iphone-helix-showcase.json'
+import templates from './templates'
 
 const { version } = useAppUpdater({ checkOnStartup: true, autoInstall: true })
 
-const templateLibrary: Record<string, unknown> = {
-  'Multi iPhone Fanout': multiIphoneFanout,
-  'MacBook Platform Reveal': macbookPlatformReveal,
-  'iPhone Helix Showcase': iphoneHelixShowcase,
-}
-
-const selectedTemplateKey = ref('Multi iPhone Fanout')
-const config = ref<Record<string, unknown>>(templateLibrary[selectedTemplateKey.value])
+const selectedTemplateKey = ref('Macbook Podium Showcase')
+const config = ref<Record<string, unknown>>(templates[selectedTemplateKey.value])
 const overrides = ref<Record<string, unknown>>({})
 const isReady = ref(false)
 const currentFrame = ref(0)
@@ -33,7 +25,7 @@ const durationFrames = computed(() => config.value?.output?.durationFrames || 12
 const fps = computed(() => config.value?.output?.fps || 60)
 
 function handleTemplateChange() {
-  config.value = templateLibrary[selectedTemplateKey.value]
+  config.value = templates[selectedTemplateKey.value]
   currentFrame.value = 0
 }
 
@@ -128,7 +120,7 @@ onUnmounted(() => {
         class="cursor-pointer appearance-none rounded-lg border border-white/10 bg-[#121218]/85 px-4 py-2.5 font-mono text-[13px] text-slate-200 shadow-2xl backdrop-blur-md outline-none transition-colors hover:border-white/25 focus:border-indigo-500/50"
       >
         <option
-          v-for="key in Object.keys(templateLibrary)"
+          v-for="key in Object.keys(templates)"
           :key="key"
           :value="key"
           class="bg-[#121218] text-slate-200"

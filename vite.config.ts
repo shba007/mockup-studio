@@ -100,7 +100,7 @@ export default defineConfig({
   plugins: lazyPlugins(() => [vue({ ...templateCompilerOptions }), vueDevTools(), tailwindcss()]),
   server: {
     watch: {
-      ignored: ['**/src-tauri/**'],
+      ignored: ['**/src-tauri/**', '/public/**'],
     },
   },
   resolve: {

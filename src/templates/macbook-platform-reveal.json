@@ -1,18 +1,18 @@
 {
   "id": "macbook-platform-reveal",
   "output": {
-    "width": 1920,
-    "height": 1080,
+    "width": 3840,
+    "height": 2160,
     "fps": 60,
     "durationFrames": 360
   },
   "variables": {
-    "screenMedia": "/textures/placeholder.png",
+    "screenMedia": "/textures/01-Dashboard.jpg",
     "chassisColor": "#535150",
     "backgroundGradient": "radial-gradient(circle at center, #5945EA 0%, #2B2B2B 100%)"
   },
   "device": {
-    "modelUrl": "/models/macbook_pro_m3_16_inch_2024.glb",
+    "modelUrl": "/models/apple-macbook-pro-m3-16-inch.glb",
     "meshBindings": {
       "screen": "sfCQkHOWyrsLmor",
       "chassis": "Body_Aluminum_Mesh",

@@ -11,7 +11,7 @@
     "backgroundGradient": "radial-gradient(circle at center, #5945EA 0%, #2B2B2B 100%)"
   },
   "device": {
-    "modelUrl": "/models/apple_iphone_15_pro_max_black.glb",
+    "modelUrl": "/models/apple-iphone-15-pro-max-black.glb",
     "meshBindings": {
       "screen": "pIJKfZsazmcpEiU"
     },
