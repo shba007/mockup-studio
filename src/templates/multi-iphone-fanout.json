@@ -7,13 +7,13 @@
     "durationFrames": 300
   },
   "variables": {
-    "screenMedia": "/assets/textures/preview-1.jpg",
+    "screenMedia": "/textures/preview-1.jpg",
     "backgroundGradient": "radial-gradient(circle at center, #5945EA 0%, #2B2B2B 100%)"
   },
   "devices": [
     {
       "name": "Center Hero",
-      "modelUrl": "/assets/models/apple_iphone_15_pro_max_black.glb",
+      "modelUrl": "/models/apple_iphone_15_pro_max_black.glb",
       "meshBindings": {
         "screen": "pIJKfZsazmcpEiU"
       },
@@ -63,7 +63,7 @@
     },
     {
       "name": "Mid Left",
-      "modelUrl": "/assets/models/apple_iphone_15_pro_max_black.glb",
+      "modelUrl": "/models/apple_iphone_15_pro_max_black.glb",
       "meshBindings": {
         "screen": "pIJKfZsazmcpEiU",
         "chassis": "oZRkkORNzkufnGD"
@@ -124,7 +124,7 @@
     },
     {
       "name": "Far Left",
-      "modelUrl": "/assets/models/apple_iphone_15_pro_max_black.glb",
+      "modelUrl": "/models/apple_iphone_15_pro_max_black.glb",
       "meshBindings": {
         "screen": "pIJKfZsazmcpEiU",
         "chassis": "oZRkkORNzkufnGD"
@@ -185,7 +185,7 @@
     },
     {
       "name": "Mid Right",
-      "modelUrl": "/assets/models/apple_iphone_15_pro_max_black.glb",
+      "modelUrl": "/models/apple_iphone_15_pro_max_black.glb",
       "meshBindings": {
         "screen": "pIJKfZsazmcpEiU",
         "chassis": "oZRkkORNzkufnGD"
@@ -246,7 +246,7 @@
     },
     {
       "name": "Far Right",
-      "modelUrl": "/assets/models/apple_iphone_15_pro_max_black.glb",
+      "modelUrl": "/models/apple_iphone_15_pro_max_black.glb",
       "meshBindings": {
         "screen": "pIJKfZsazmcpEiU",
         "chassis": "oZRkkORNzkufnGD"

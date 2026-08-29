@@ -41,4 +41,9 @@ __screenshots__/
 !.vscode/settings.json
 !.vscode/extensions.json
 
-assets
+# dotenv environment variable files
+.env
+.env.*
+!.env.example
+
+old

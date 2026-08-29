@@ -18,25 +18,25 @@ const emit = defineEmits<{
 
 const tracks = computed(() => {
   const camera = props.config.camera?.keyframes || {}
-  const trackList = []
+  const trackList: { name: string; frames: number[] }[] = []
   const devices = props.config.devices || (props.config.device ? [props.config.device] : [])
 
-  devices.forEach((dev: unknown, index: number) => {
+  devices.forEach((dev, index: number) => {
     const name = dev.name || `Device ${index + 1}`
     const kf = dev.keyframes || {}
 
     if (kf.position) {
-      trackList.push({ name: `${name} Pos`, frames: kf.position.map((k: unknown) => k.frame) })
+      trackList.push({ name: `${name} Pos`, frames: kf.position.map((k) => k.frame) })
     }
     if (kf.rotation) {
-      trackList.push({ name: `${name} Rot`, frames: kf.rotation.map((k: unknown) => k.frame) })
+      trackList.push({ name: `${name} Rot`, frames: kf.rotation.map((k) => k.frame) })
     }
   })
 
   if (camera.position) {
     trackList.push({
       name: 'Camera Position',
-      frames: camera.position.map((k: unknown) => k.frame),
+      frames: camera.position.map((k) => k.frame),
     })
   }
 
@@ -56,42 +56,66 @@ function handleTimelineClick(event: MouseEvent) {
 </script>
 
 <template>
-  <div class="timeline-container">
-    <div class="controls-row">
-      <div class="btn-group">
-        <button class="control-btn" @click="emit('togglePlay')">
+  <div
+    class="absolute bottom-6 left-1/2 z-50 w-[92vw] max-w-[900px] -translate-x-1/2 select-none rounded-xl border border-white/10 bg-[#121218]/85 px-5 py-4 font-mono text-slate-200 shadow-2xl backdrop-blur-md"
+  >
+    <!-- Controls Header -->
+    <div class="mb-3.5 flex items-center justify-between">
+      <!-- Buttons -->
+      <div class="flex items-center gap-2">
+        <button
+          class="cursor-pointer rounded-md bg-indigo-600 px-3.5 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-indigo-700 active:scale-95"
+          @click="emit('togglePlay')"
+        >
           {{ isPlaying ? '⏸ Pause' : '▶ Play' }}
         </button>
-        <button class="control-btn secondary" @click="emit('seek', 0)">⏮ Reset</button>
+
         <button
-          class="control-btn"
-          style="background: #eab308; color: black"
+          class="cursor-pointer rounded-md bg-white/[0.08] px-3.5 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-white/[0.15] active:scale-95"
+          @click="emit('seek', 0)"
+        >
+          ⏮ Reset
+        </button>
+
+        <button
+          class="cursor-pointer rounded-md bg-yellow-500 px-3.5 py-1.5 text-xs font-semibold text-black transition-colors hover:bg-yellow-400 active:scale-95"
           @click="emit('exportSequence')"
         >
           📷 Export PNG Sequence
         </button>
       </div>
 
-      <div class="time-display">
-        <span class="highlight">F: {{ Math.floor(currentFrame) }}</span> / {{ durationFrames }}
-        <span class="divider">|</span>
+      <!-- Time Display -->
+      <div class="flex items-center gap-2 text-xs text-slate-400">
+        <span class="font-bold text-sky-400">F: {{ Math.floor(currentFrame) }}</span>
+        <span>/ {{ durationFrames }}</span>
+        <span class="text-slate-600">|</span>
         <span>{{ currentTimeSec }}s / {{ totalTimeSec }}s</span>
-        <span class="fps-badge">{{ fps }} FPS</span>
+        <span class="rounded bg-white/[0.06] px-1.5 py-0.5 text-[11px]">{{ fps }} FPS</span>
       </div>
     </div>
 
-    <div class="tracks-wrapper" @click="handleTimelineClick">
-      <div class="playhead" :style="{ left: `${progressPercent}%` }">
-        <div class="playhead-line"></div>
+    <!-- Tracks & Scrubber -->
+    <div class="relative flex cursor-pointer flex-col gap-2 py-2" @click="handleTimelineClick">
+      <!-- Playhead -->
+      <div
+        class="pointer-events-none absolute inset-y-0 z-10 w-0.5 -translate-x-1/2"
+        :style="{ left: `${progressPercent}%` }"
+      >
+        <div class="h-full w-0.5 bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]"></div>
       </div>
 
-      <div v-for="track in tracks" :key="track.name" class="track-row">
-        <span class="track-label">{{ track.name }}</span>
-        <div class="track-timeline">
+      <!-- Keyframe Tracks -->
+      <div v-for="track in tracks" :key="track.name" class="flex h-5 items-center gap-3">
+        <span class="w-32 truncate text-[11px] text-slate-500">
+          {{ track.name }}
+        </span>
+
+        <div class="relative h-1 flex-1 rounded-full bg-white/[0.08]">
           <div
             v-for="frame in track.frames"
             :key="frame"
-            class="keyframe-diamond"
+            class="absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rotate-45 cursor-pointer rounded-[1px] border border-slate-900 bg-sky-400 transition-all duration-150 hover:scale-125 hover:bg-yellow-400"
             :style="{ left: `${(frame / durationFrames) * 100}%` }"
             :title="`Frame ${frame}`"
             @click.stop="emit('seek', frame)"
@@ -101,153 +125,3 @@ function handleTimelineClick(event: MouseEvent) {
     </div>
   </div>
 </template>
-
-<style scoped>
-.timeline-container {
-  position: absolute;
-  bottom: 24px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: min(900px, 92vw);
-  background: rgba(18, 18, 24, 0.85);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  padding: 16px 20px;
-  color: #e2e8f0;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
-  user-select: none;
-  z-index: 1000;
-}
-
-.controls-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 14px;
-}
-
-.btn-group {
-  display: flex;
-  gap: 8px;
-}
-
-.control-btn {
-  background: #4f46e5;
-  color: white;
-  border: none;
-  padding: 6px 14px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.control-btn:hover {
-  background: #4338ca;
-}
-
-.control-btn.secondary {
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.control-btn.secondary:hover {
-  background: rgba(255, 255, 255, 0.15);
-}
-
-.time-display {
-  font-size: 12px;
-  color: #94a3b8;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.time-display .highlight {
-  color: #38bdf8;
-  font-weight: bold;
-}
-
-.divider {
-  color: #475569;
-}
-
-.fps-badge {
-  background: rgba(255, 255, 255, 0.06);
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 11px;
-}
-
-.tracks-wrapper {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  cursor: pointer;
-  padding: 8px 0;
-}
-
-.playhead {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 2px;
-  pointer-events: none;
-  z-index: 10;
-  transform: translateX(-50%);
-}
-
-.playhead-line {
-  width: 2px;
-  height: 100%;
-  background: #ef4444;
-  box-shadow: 0 0 8px rgba(239, 68, 68, 0.8);
-}
-
-.track-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  height: 20px;
-}
-
-.track-label {
-  width: 130px;
-  font-size: 11px;
-  color: #64748b;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.track-timeline {
-  flex: 1;
-  height: 4px;
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 2px;
-  position: relative;
-}
-
-.keyframe-diamond {
-  position: absolute;
-  top: 50%;
-  width: 10px;
-  height: 10px;
-  background: #38bdf8;
-  transform: translate(-50%, -50%) rotate(45deg);
-  border-radius: 1px;
-  border: 1px solid #0f172a;
-  cursor: pointer;
-  transition:
-    transform 0.15s,
-    background 0.15s;
-}
-
-.keyframe-diamond:hover {
-  background: #facc15;
-  transform: translate(-50%, -50%) rotate(45deg) scale(1.3);
-}
-</style>

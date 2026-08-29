@@ -7,12 +7,12 @@
     "durationFrames": 360
   },
   "variables": {
-    "screenMedia": "/assets/textures/placeholder.png",
+    "screenMedia": "/textures/placeholder.png",
     "chassisColor": "#535150",
     "backgroundGradient": "radial-gradient(circle at center, #5945EA 0%, #2B2B2B 100%)"
   },
   "device": {
-    "modelUrl": "/assets/models/macbook_pro_m3_16_inch_2024.glb",
+    "modelUrl": "/models/macbook_pro_m3_16_inch_2024.glb",
     "meshBindings": {
       "screen": "sfCQkHOWyrsLmor",
       "chassis": "Body_Aluminum_Mesh",

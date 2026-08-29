@@ -20,12 +20,13 @@ const devicesConfig = computed(() => {
   return props.config.devices || (props.config.device ? [props.config.device] : [])
 })
 
-const activeScreenMedia = props.overrides?.screenMedia || props.config.variables?.screenMedia
-const activeBg =
-  props.overrides?.backgroundColor ||
+const activeScreenMedia = (props.overrides?.screenMedia || props.config.variables?.screenMedia) as
+  | string
+  | undefined
+const activeBg = (props.overrides?.backgroundColor ||
   props.config.variables?.backgroundGradient ||
   props.config.variables?.backgroundColor ||
-  '#0d0f12'
+  '#0d0f12') as string
 
 const bgTexture = shallowRef<THREE.CanvasTexture>()
 
@@ -125,7 +126,9 @@ const loadCachedModel = async (url: string) => {
   return gltf.scene
 }
 
-const deviceInstances = shallowRef<unknown[]>([])
+const deviceInstances = shallowRef<
+  { group: THREE.Group; initialTransforms: Map<string, unknown> }[]
+>([])
 const devicePositions = ref<[number, number, number][]>([])
 const deviceRotations = ref<[number, number, number][]>([])
 
@@ -190,7 +193,7 @@ for (let i = 0; i < devicesConfig.value.length; i++) {
 
       if (isChassis) {
         mesh.material = new THREE.MeshStandardMaterial({
-          color: new THREE.Color(chassisColor),
+          color: new THREE.Color(chassisColor as string),
           metalness: dConf.materials?.chassis?.metalness ?? 0.85,
           roughness: dConf.materials?.chassis?.roughness ?? 0.25,
         })
@@ -215,7 +218,7 @@ watchEffect(() => {
     cameraPosition.value = [camPos[0]!, camPos[1]!, camPos[2]!]
   }
 
-  devicesConfig.value.forEach((dConf: unknown, i: number) => {
+  devicesConfig.value.forEach((dConf, i: number) => {
     const pos = evaluateKeyframes(dConf.keyframes?.position, frame)
     const rot = evaluateKeyframes(dConf.keyframes?.rotation, frame)
 
@@ -278,7 +281,7 @@ const pixelRatio = typeof window !== 'undefined' ? Math.min(window.devicePixelRa
 
 <template>
   <div
-    class="scene-viewport"
+    class="absolute top-1/2 left-1/2 origin-center overflow-hidden"
     :style="{
       width: `${outWidth}px`,
       height: `${outHeight}px`,
@@ -296,7 +299,7 @@ const pixelRatio = typeof window !== 'undefined' ? Math.min(window.devicePixelRa
         ref="cameraRef"
         :position="cameraPosition"
         :aspect="outWidth / outHeight"
-        :fov="config.camera?.fov || 34"
+        :fov="(config.camera as any)?.fov || 34"
         :look-at="[0, 0, 0]"
       />
 
@@ -318,13 +321,3 @@ const pixelRatio = typeof window !== 'undefined' ? Math.min(window.devicePixelRa
     </TresCanvas>
   </div>
 </template>
-
-<style scoped>
-.scene-viewport {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform-origin: center center;
-  overflow: hidden;
-}
-</style>

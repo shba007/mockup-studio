@@ -3,6 +3,7 @@ import { fileURLToPath, URL } from 'node:url'
 import { defineConfig, lazyPlugins } from 'vite-plus'
 import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
+import tailwindcss from '@tailwindcss/vite'
 import { templateCompilerOptions } from '@tresjs/core'
 
 // https://vite.dev/config/
@@ -15,7 +16,7 @@ export default defineConfig({
     singleQuote: true,
   },
   lint: {
-    plugins: ['eslint', 'typescript', 'unicorn', 'oxc', 'vue'],
+    plugins: ['eslint', 'typescript', 'unicorn', 'oxc', 'vue', 'vitest'],
     categories: {
       correctness: 'error',
     },
@@ -62,6 +63,28 @@ export default defineConfig({
           'prefer-spread': 'error',
         },
       },
+      {
+        files: ['src/**/__tests__/*'],
+        rules: {
+          'vitest/expect-expect': 'error',
+          'vitest/no-commented-out-tests': 'error',
+          'vitest/no-conditional-expect': 'error',
+          'vitest/no-disabled-tests': 'warn',
+          'vitest/no-focused-tests': 'error',
+          'vitest/no-identical-title': 'error',
+          'vitest/no-import-node-test': 'error',
+          'vitest/no-interpolation-in-snapshots': 'error',
+          'vitest/no-mocks-import': 'error',
+          'vitest/no-standalone-expect': 'error',
+          'vitest/no-unneeded-async-expect-function': 'error',
+          'vitest/prefer-called-exactly-once-with': 'error',
+          'vitest/require-local-test-context-for-concurrent-snapshots': 'error',
+          'vitest/valid-describe-callback': 'error',
+          'vitest/valid-expect': 'error',
+          'vitest/valid-expect-in-promise': 'error',
+          'vitest/valid-title': 'error',
+        },
+      },
     ],
     options: {
       typeAware: true,
@@ -74,7 +97,12 @@ export default defineConfig({
       },
     ],
   },
-  plugins: lazyPlugins(() => [vue({...templateCompilerOptions}), vueDevTools()]),
+  plugins: lazyPlugins(() => [vue({ ...templateCompilerOptions }), vueDevTools(), tailwindcss()]),
+  server: {
+    watch: {
+      ignored: ['**/src-tauri/**'],
+    },
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

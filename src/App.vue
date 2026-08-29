@@ -3,10 +3,13 @@ import { ref, onMounted, onUnmounted, computed } from 'vue'
 import JSZip from 'jszip'
 import MockupScene from './components/MockupScene.vue'
 import TimelinePanel from './components/TimelinePanel.vue'
+import { useAppUpdater } from './composables/useAppUpdater'
 
-import multiIphoneFanout from '../templates/multi-iphone-fanout.json'
-import macbookPlatformReveal from '../templates/macbook-platform-reveal.json'
-import iphoneHelixShowcase from '../templates/iphone-helix-showcase.json'
+import multiIphoneFanout from './templates/multi-iphone-fanout.json'
+import macbookPlatformReveal from './templates/macbook-platform-reveal.json'
+import iphoneHelixShowcase from './templates/iphone-helix-showcase.json'
+
+const { version } = useAppUpdater({ checkOnStartup: true, autoInstall: true })
 
 const templateLibrary: Record<string, unknown> = {
   'Multi iPhone Fanout': multiIphoneFanout,
@@ -95,6 +98,8 @@ function handleKeydown(e: KeyboardEvent) {
 }
 
 onMounted(() => {
+  console.log('App Version', version)
+
   const globalPayload = (window as unknown as { __RENDER_PAYLOAD__?: Record<string, unknown> })
     .__RENDER_PAYLOAD__
   if (globalPayload) {
@@ -114,24 +119,44 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="app-container">
-    <div v-if="!isExporting && isReady" class="template-selector">
-      <select v-model="selectedTemplateKey" @change="handleTemplateChange">
-        <option v-for="key in Object.keys(templateLibrary)" :key="key" :value="key">
+  <div class="relative flex h-screen w-screen items-center justify-center overflow-hidden bg-black">
+    <!-- Template Selector -->
+    <div v-if="!isExporting && isReady" class="absolute top-6 left-6 z-50">
+      <select
+        v-model="selectedTemplateKey"
+        @change="handleTemplateChange"
+        class="cursor-pointer appearance-none rounded-lg border border-white/10 bg-[#121218]/85 px-4 py-2.5 font-mono text-[13px] text-slate-200 shadow-2xl backdrop-blur-md outline-none transition-colors hover:border-white/25 focus:border-indigo-500/50"
+      >
+        <option
+          v-for="key in Object.keys(templateLibrary)"
+          :key="key"
+          :value="key"
+          class="bg-[#121218] text-slate-200"
+        >
           {{ key }}
         </option>
       </select>
     </div>
 
-    <div v-if="isExporting" class="export-overlay">
-      <div class="spinner"></div>
-      <h2>Rendering Frame Sequence...</h2>
-      <div class="progress-bar-bg">
-        <div class="progress-bar-fill" :style="{ width: `${exportProgress}%` }"></div>
+    <!-- Export Overlay -->
+    <div
+      v-if="isExporting"
+      class="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/85 font-mono text-white backdrop-blur-md"
+    >
+      <div
+        class="mb-6 h-10 w-10 animate-spin rounded-full border-4 border-white/10 border-t-indigo-500"
+      ></div>
+      <h2 class="text-base font-medium tracking-wide">Rendering Frame Sequence...</h2>
+      <div class="my-4 h-2 w-[300px] overflow-hidden rounded-full bg-[#333]">
+        <div
+          class="h-full bg-indigo-500 transition-[width] duration-100 ease-linear"
+          :style="{ width: `${exportProgress}%` }"
+        ></div>
       </div>
-      <p>{{ exportProgress }}% Complete</p>
+      <p class="text-sm text-zinc-400">{{ exportProgress }}% Complete</p>
     </div>
 
+    <!-- 3D Scene Viewport -->
     <Suspense>
       <MockupScene
         v-if="isReady"
@@ -141,11 +166,21 @@ onUnmounted(() => {
         :current-frame="currentFrame"
       />
       <template #fallback>
-        <div class="loading">Loading 3D Engine...</div>
+        <div class="flex h-screen items-center justify-center font-mono text-white">
+          Loading 3D Engine...
+        </div>
       </template>
     </Suspense>
 
-    <Transition name="fade">
+    <!-- Timeline Panel -->
+    <Transition
+      enter-active-class="transition-all duration-200 ease-out"
+      enter-from-class="opacity-0 translate-y-4"
+      enter-to-class="opacity-100 translate-y-0"
+      leave-active-class="transition-all duration-200 ease-in"
+      leave-from-class="opacity-100 translate-y-0"
+      leave-to-class="opacity-0 translate-y-4"
+    >
       <TimelinePanel
         v-show="showTimeline && isReady && !isExporting"
         :current-frame="currentFrame"
@@ -160,109 +195,3 @@ onUnmounted(() => {
     </Transition>
   </div>
 </template>
-
-<style scoped>
-.app-container {
-  width: 100vw;
-  height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #000;
-  overflow: hidden;
-}
-
-.template-selector {
-  position: absolute;
-  top: 24px;
-  left: 24px;
-  z-index: 1000;
-}
-
-.template-selector select {
-  background: rgba(18, 18, 24, 0.85);
-  color: #e2e8f0;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 10px 16px;
-  border-radius: 8px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 13px;
-  outline: none;
-  cursor: pointer;
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(12px);
-  appearance: none;
-  -webkit-appearance: none;
-}
-
-.template-selector select:hover {
-  border-color: rgba(255, 255, 255, 0.25);
-}
-
-.loading {
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100vh;
-  font-family: ui-monospace, monospace;
-}
-
-.export-overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(8px);
-  z-index: 9999;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-family: ui-monospace, monospace;
-}
-
-.progress-bar-bg {
-  width: 300px;
-  height: 8px;
-  background: #333;
-  border-radius: 4px;
-  margin: 16px 0;
-  overflow: hidden;
-}
-
-.progress-bar-fill {
-  height: 100%;
-  background: #6366f1;
-  transition: width 0.1s linear;
-}
-
-.spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid rgba(255, 255, 255, 0.1);
-  border-top-color: #6366f1;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin-bottom: 24px;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.fade-enter-active,
-.fade-leave-active {
-  transition:
-    opacity 0.2s ease,
-    transform 0.2s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-  transform: translate(-50%, 15px);
-}
-</style>

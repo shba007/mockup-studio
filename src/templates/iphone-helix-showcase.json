@@ -7,11 +7,11 @@
     "durationFrames": 540
   },
   "variables": {
-    "screenMedia": "/assets/textures/preview-1.jpg",
+    "screenMedia": "/textures/preview-1.jpg",
     "backgroundGradient": "radial-gradient(circle at center, #5945EA 0%, #2B2B2B 100%)"
   },
   "device": {
-    "modelUrl": "/assets/models/apple_iphone_15_pro_max_black.glb",
+    "modelUrl": "/models/apple_iphone_15_pro_max_black.glb",
     "meshBindings": {
       "screen": "pIJKfZsazmcpEiU"
     },
