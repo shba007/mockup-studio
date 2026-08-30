@@ -1,5 +1,28 @@
 # Changelog
 
+## v0.1.0
+
+### 🚀 Enhancements
+
+- Add video rendering functionality and export PNG sequence feature ([1920e78](https://github.com/shba007/mockup-studio/commit/1920e78))
+- Enhance README with comprehensive animation.json guide and add new templates for iPhone and MacBook showcases ([e705bd0](https://github.com/shba007/mockup-studio/commit/e705bd0))
+- Enhance MockupScene and TimelinePanel components with improved device handling and animation keyframes ([f562f47](https://github.com/shba007/mockup-studio/commit/f562f47))
+- ⚠️ Enhance TimelinePanel component with improved styles and functionality ([57a5e6d](https://github.com/shba007/mockup-studio/commit/57a5e6d))
+- Update templates and enhance device handling in MockupScene and App components ([229c5a7](https://github.com/shba007/mockup-studio/commit/229c5a7))
+
+### 💅 Refactors
+
+- Update project structure and enhance animation features ([362098b](https://github.com/shba007/mockup-studio/commit/362098b))
+- Cleaned code and improved readability update json templates for better type safety ([5123dd0](https://github.com/shba007/mockup-studio/commit/5123dd0))
+
+#### ⚠️ Breaking Changes
+
+- ⚠️ Enhance TimelinePanel component with improved styles and functionality ([57a5e6d](https://github.com/shba007/mockup-studio/commit/57a5e6d))
+
+### ❤️ Contributors
+
+- Shirsendu Bairagi ([@shba007](https://github.com/shba007))
+
 ## v0.0.4
 
 [compare changes](https://github.com/shba007/vuetemplate/compare/v0.0.3...v0.0.4)
