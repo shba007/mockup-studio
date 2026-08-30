@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.1.2
+
+[compare changes](https://github.com/shba007/mockup-studio/compare/v0.1.1...v0.1.2)
+
+### 🚀 Enhancements
+
+- Add mediabunny for video export and implement export options for desktop and mobile ([714eb71](https://github.com/shba007/mockup-studio/commit/714eb71))
+
+### 🏡 Chore
+
+- Enable lfs support in workflows and update Cargo.toml ([69150dd](https://github.com/shba007/mockup-studio/commit/69150dd))
+
+### ❤️ Contributors
+
+- Shirsendu Bairagi ([@shba007](https://github.com/shba007))
+
 ## v0.1.1
 
 [compare changes](https://github.com/shba007/mockup-studio/compare/v0.1.0...v0.1.1)
