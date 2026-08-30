@@ -11,84 +11,92 @@
     "chassisColor": "#535150",
     "backgroundGradient": "radial-gradient(circle at center, #5945EA 0%, #2B2B2B 100%)"
   },
-  "device": {
-    "modelUrl": "/models/apple-macbook-pro-m3-16-inch.glb",
-    "meshBindings": {
-      "screen": "sfCQkHOWyrsLmor",
-      "chassis": "Body_Aluminum_Mesh",
-      "keyboard": "Keyboard_Keys_Mesh"
-    },
-    "materials": {
-      "chassis": {
-        "metalness": 0.9,
-        "roughness": 0.4
+  "objects": [
+    {
+      "name": "MacBook Pro M3 16",
+      "modelUrl": "/models/apple-macbook-pro-m3-16-inch.glb",
+      "meshBindings": {
+        "screen": "sfCQkHOWyrsLmor",
+        "chassis": "Body_Aluminum_Mesh",
+        "keyboard": "Keyboard_Keys_Mesh"
       },
-      "screen": {
-        "roughness": 0.05,
-        "emissiveIntensity": 1.2
-      }
-    },
-    "keyframes": {
-      "position": [
-        {
-          "frame": 0,
-          "value": [0, -1.0, 2.0],
-          "easing": "easeOutCubic"
+      "screenTransform": {
+        "rotation": 0,
+        "flipX": false,
+        "flipY": false
+      },
+      "materials": {
+        "chassis": {
+          "metalness": 0.9,
+          "roughness": 0.4
         },
-        {
-          "frame": 90,
-          "value": [0, -0.5, 0],
-          "easing": "linear"
-        },
-        {
-          "frame": 270,
-          "value": [0, -0.5, 0],
-          "easing": "easeInOutCubic"
-        },
-        {
-          "frame": 360,
-          "value": [0, 2.0, 5.0]
+        "screen": {
+          "roughness": 0.05,
+          "emissiveIntensity": 1.2
         }
-      ],
-      "rotation": [
-        {
-          "frame": 0,
-          "value": [0.5, -0.5, 0],
-          "easing": "easeOutCubic"
-        },
-        {
-          "frame": 90,
-          "value": [0.2, 0, 0],
-          "easing": "linear"
-        },
-        {
-          "frame": 270,
-          "value": [0.2, 0, 0],
-          "easing": "easeInOutCubic"
-        },
-        {
-          "frame": 360,
-          "value": [0, 1.5708, 0.2]
-        }
-      ],
-      "nodes": {
-        "sCDUJzdvWbkmEnT_67": {
-          "rotation": [
-            {
-              "frame": 0,
-              "value": [1.919, 0, 0],
-              "easing": "easeInOutSine"
-            },
-            {
-              "frame": 60,
-              "value": [0, 0, 0],
-              "easing": "linear"
-            }
-          ]
+      },
+      "keyframes": {
+        "position": [
+          {
+            "frame": 0,
+            "value": [0, -1.0, 2.0],
+            "easing": "easeOutCubic"
+          },
+          {
+            "frame": 90,
+            "value": [0, -0.5, 0],
+            "easing": "linear"
+          },
+          {
+            "frame": 270,
+            "value": [0, -0.5, 0],
+            "easing": "easeInOutCubic"
+          },
+          {
+            "frame": 360,
+            "value": [0, 2.0, 5.0]
+          }
+        ],
+        "rotation": [
+          {
+            "frame": 0,
+            "value": [0.5, -0.5, 0],
+            "easing": "easeOutCubic"
+          },
+          {
+            "frame": 90,
+            "value": [0.2, 0, 0],
+            "easing": "linear"
+          },
+          {
+            "frame": 270,
+            "value": [0.2, 0, 0],
+            "easing": "easeInOutCubic"
+          },
+          {
+            "frame": 360,
+            "value": [0, 1.5708, 0.2]
+          }
+        ],
+        "nodes": {
+          "sCDUJzdvWbkmEnT_67": {
+            "rotation": [
+              {
+                "frame": 0,
+                "value": [1.919, 0, 0],
+                "easing": "easeInOutSine"
+              },
+              {
+                "frame": 60,
+                "value": [0, 0, 0],
+                "easing": "linear"
+              }
+            ]
+          }
         }
       }
     }
-  },
+  ],
   "camera": {
     "fov": 45,
     "keyframes": {

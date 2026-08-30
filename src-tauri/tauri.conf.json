@@ -39,6 +39,7 @@
     "android": {
       "debugApplicationIdSuffix": ".debug"
     },
+    "externalBin": ["bin/ffmpeg", "bin/ffprobe"],
     "createUpdaterArtifacts": true
   },
   "plugins": {

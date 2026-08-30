@@ -10,7 +10,7 @@
     "screenMedia": "/textures/preview-1.jpg",
     "backgroundGradient": "radial-gradient(circle at center, #5945EA 0%, #2B2B2B 100%)"
   },
-  "devices": [
+  "objects": [
     {
       "name": "Center Hero",
       "modelUrl": "/models/apple-iphone-15-pro-max-black.glb",

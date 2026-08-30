@@ -81,7 +81,7 @@ function handleTimelineClick(event: MouseEvent) {
           class="cursor-pointer rounded-md bg-yellow-500 px-3.5 py-1.5 text-xs font-semibold text-black transition-colors hover:bg-yellow-400 active:scale-95"
           @click="emit('exportSequence')"
         >
-          📷 Export PNG Sequence
+          📷 Export
         </button>
       </div>
 

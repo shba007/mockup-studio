@@ -48,7 +48,7 @@
     "blur": 2.0
   },
   "elements": [],
-  "devices": [
+  "objects": [
     {
       "name": "MacBook Pro M5 14",
       "modelUrl": "/models/apple-macbook-pro-m5-14-inch.glb",

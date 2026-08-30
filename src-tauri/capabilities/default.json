@@ -3,5 +3,28 @@
   "identifier": "default",
   "description": "enables the default permissions",
   "windows": ["main"],
-  "permissions": ["core:default", "process:default"]
+  "permissions": [
+    "core:default",
+    "process:default",
+    "shell:default",
+    {
+      "identifier": "shell:allow-execute",
+      "allow": [
+        {
+          "name": "bin/ffmpeg",
+          "sidecar": true,
+          "args": true
+        },
+        {
+          "name": "bin/ffprobe",
+          "sidecar": true,
+          "args": true
+        }
+      ]
+    },
+    "fs:default",
+    "fs:allow-temp-read-recursive",
+    "fs:allow-temp-write-recursive",
+    "dialog:default"
+  ]
 }

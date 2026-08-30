@@ -7,10 +7,11 @@ import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js'
 import * as THREE from 'three'
 import { EffectComposerPmndrs, BloomPmndrs } from '@tresjs/post-processing'
 import { evaluateKeyframes } from '../utils/interpolator'
+import type { SceneAnimationConfig, TextureTransform } from '../utils/types'
 
 const props = defineProps<{
-  config: Record<string, unknown>
-  overrides: Record<string, unknown>
+  config: SceneAnimationConfig
+  overrides?: Record<string, unknown>
   currentFrame: number
 }>()
 
@@ -19,19 +20,19 @@ const cameraPosition = ref<[number, number, number]>([0, 0, 4.2])
 const cameraRotation = ref<[number, number, number]>([0, 0, 0])
 
 const hasCameraRotation = computed(() => !!props.config.camera?.keyframes?.rotation)
+const objectsConfig = computed(() => props.config.objects || [])
 
-const devicesConfig = computed(() => {
-  return props.config.devices || (props.config.device ? [props.config.device] : [])
-})
+const activeScreenMedia = computed(
+  () => (props.overrides?.screenMedia || props.config.variables?.screenMedia) as string | undefined,
+)
 
-// Background Setup
-const activeScreenMedia = (props.overrides?.screenMedia || props.config.variables?.screenMedia) as
-  | string
-  | undefined
-const activeBg = (props.overrides?.backgroundColor ||
-  props.config.variables?.backgroundGradient ||
-  props.config.variables?.backgroundColor ||
-  '#0d0f12') as string
+const activeBg = computed(
+  () =>
+    (props.overrides?.backgroundColor ||
+      props.config.variables?.backgroundGradient ||
+      props.config.variables?.backgroundColor ||
+      '#0d0f12') as string,
+)
 
 const bgTexture = shallowRef<THREE.CanvasTexture>()
 
@@ -48,18 +49,19 @@ function generateBackgroundTexture() {
   const ctx = bgCanvas.getContext('2d')
   if (!ctx) return
 
-  if (activeBg.includes('gradient')) {
-    const colors = activeBg.match(/#[a-fA-F0-9]{3,6}/g) || ['#5945ea', '#2b2b2b']
+  const bg = activeBg.value
+  if (bg.includes('gradient')) {
+    const colors = bg.match(/#[a-fA-F0-9]{3,6}/g) || ['#5945ea', '#2b2b2b']
     const cx = bgCanvas.width / 2
     const cy = bgCanvas.height / 2
     const r = Math.sqrt(cx * cx + cy * cy)
 
     const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r)
-    grad.addColorStop(0, colors[0])
-    grad.addColorStop(1, colors[1] || colors[0])
+    grad.addColorStop(0, colors[0]!)
+    grad.addColorStop(1, colors[1] || colors[0]!)
     ctx.fillStyle = grad
   } else {
-    ctx.fillStyle = activeBg
+    ctx.fillStyle = bg
   }
 
   ctx.fillRect(0, 0, bgCanvas.width, bgCanvas.height)
@@ -90,7 +92,6 @@ function createFallbackTexture(): THREE.CanvasTexture {
   return texture
 }
 
-// Texture Loader & Cache
 const texLoader = new THREE.TextureLoader()
 const textureCache = new Map<string, THREE.Texture>()
 
@@ -107,17 +108,9 @@ const loadCachedTexture = async (url?: string): Promise<THREE.Texture> => {
   }
 }
 
-// Dynamic UV Configurator per Device
 function applyTextureTransform(
   sourceTex: THREE.Texture,
-  transformConfig?: {
-    rotation?: number
-    flipX?: boolean
-    flipY?: boolean
-    offset?: [number, number]
-    repeat?: [number, number]
-    center?: [number, number]
-  },
+  transformConfig?: TextureTransform,
 ): THREE.Texture {
   const tex = sourceTex.clone()
   const rot = transformConfig?.rotation ?? 0
@@ -145,7 +138,6 @@ function applyTextureTransform(
   return tex
 }
 
-// 3D Model Loading & Binding
 const gltfLoader = new GLTFLoader()
 const modelCache = new Map<string, THREE.Group>()
 
@@ -156,19 +148,19 @@ const loadCachedModel = async (url: string) => {
   return gltf.scene
 }
 
-const deviceInstances = shallowRef<
+const sceneInstances = shallowRef<
   { group: THREE.Group; initialTransforms: Map<string, unknown> }[]
 >([])
-const devicePositions = ref<[number, number, number][]>([])
-const deviceRotations = ref<[number, number, number][]>([])
+const objectPositions = ref<[number, number, number][]>([])
+const objectRotations = ref<[number, number, number][]>([])
 
 const instancesTemp = []
 const positionsTemp = []
 const rotationsTemp = []
 
-for (let i = 0; i < devicesConfig.value.length; i++) {
-  const dConf = devicesConfig.value[i]
-  const baseScene = await loadCachedModel(dConf.modelUrl)
+for (let i = 0; i < objectsConfig.value.length; i++) {
+  const objConf = objectsConfig.value[i]!
+  const baseScene = await loadCachedModel(objConf.modelUrl)
   const scene = SkeletonUtils.clone(baseScene) as THREE.Group
 
   const box = new THREE.Box3().setFromObject(scene)
@@ -176,9 +168,9 @@ for (let i = 0; i < devicesConfig.value.length; i++) {
   const size = box.getSize(new THREE.Vector3())
   const maxDim = Math.max(size.x, size.y, size.z)
 
-  const autoCenter = dConf.autoCenter ?? true
-  const autoScale = dConf.autoScale ?? true
-  const customScale = typeof dConf.scale === 'number' ? dConf.scale : 1.0
+  const autoCenter = objConf.autoCenter ?? true
+  const autoScale = objConf.autoScale ?? true
+  const customScale = typeof objConf.scale === 'number' ? objConf.scale : 1.0
   const targetScale = (autoScale ? 2.4 / (maxDim || 1) : 1.0) * customScale
 
   if (autoCenter) {
@@ -189,20 +181,22 @@ for (let i = 0; i < devicesConfig.value.length; i++) {
   const wrapperGroup = new THREE.Group()
   wrapperGroup.add(scene)
 
-  // Resolve Screen Media & Per-Device UV Configuration
-  const deviceMedia = dConf.screenMedia || activeScreenMedia
-  const baseTex = await loadCachedTexture(deviceMedia)
+  const targetMedia = objConf.screenMedia || activeScreenMedia.value
+  const baseTex = await loadCachedTexture(targetMedia)
   const uvTransform =
-    dConf.screenTransform ||
+    objConf.screenTransform ||
     props.overrides?.screenTransform ||
-    props.config.variables?.screenTransform ||
-    {}
-  const deviceScreenTexture = applyTextureTransform(baseTex, uvTransform)
+    props.config.variables?.screenTransform
+  const screenTexture = applyTextureTransform(baseTex, uvTransform)
 
   const initialTransforms = new Map()
-  const targetScreen = dConf.meshBindings?.screen
-  const targetChassis = dConf.meshBindings?.chassis
-  const chassisColor = props.overrides?.chassisColor || dConf.materials?.chassis?.color || '#242426'
+  const targetScreen = objConf.meshBindings?.screen
+  const targetChassis = objConf.meshBindings?.chassis
+  const chassisColor =
+    (props.overrides?.chassisColor as string) ||
+    objConf.materials?.chassis?.color ||
+    (props.config.variables?.chassisColor as string) ||
+    '#242426'
 
   scene.traverse((child: THREE.Object3D) => {
     initialTransforms.set(child.name, {
@@ -235,17 +229,17 @@ for (let i = 0; i < devicesConfig.value.length; i++) {
       if (isScreen) {
         mesh.material = new THREE.MeshStandardMaterial({
           color: new THREE.Color(0x000000),
-          emissiveMap: deviceScreenTexture,
+          emissiveMap: screenTexture,
           emissive: new THREE.Color(0xffffff),
-          emissiveIntensity: dConf.materials?.screen?.emissiveIntensity ?? 1.2,
-          roughness: dConf.materials?.screen?.roughness ?? 0.05,
+          emissiveIntensity: objConf.materials?.screen?.emissiveIntensity ?? 1.2,
+          roughness: objConf.materials?.screen?.roughness ?? 0.05,
           metalness: 0.0,
         })
       } else if (isChassis) {
         mesh.material = new THREE.MeshStandardMaterial({
-          color: new THREE.Color(chassisColor as string),
-          metalness: dConf.materials?.chassis?.metalness ?? 0.85,
-          roughness: dConf.materials?.chassis?.roughness ?? 0.25,
+          color: new THREE.Color(chassisColor),
+          metalness: objConf.materials?.chassis?.metalness ?? 0.85,
+          roughness: objConf.materials?.chassis?.roughness ?? 0.25,
         })
       }
     }
@@ -256,11 +250,10 @@ for (let i = 0; i < devicesConfig.value.length; i++) {
   rotationsTemp.push([0, 0, 0])
 }
 
-deviceInstances.value = instancesTemp
-devicePositions.value = positionsTemp as [number, number, number][]
-deviceRotations.value = rotationsTemp as [number, number, number][]
+sceneInstances.value = instancesTemp
+objectPositions.value = positionsTemp as [number, number, number][]
+objectRotations.value = rotationsTemp as [number, number, number][]
 
-// Keyframe Interpolation Loop
 watchEffect(() => {
   const frame = props.currentFrame
   const camPos = evaluateKeyframes(props.config.camera?.keyframes?.position, frame)
@@ -273,15 +266,15 @@ watchEffect(() => {
     cameraRotation.value = [camRot[0]!, camRot[1]!, camRot[2]!]
   }
 
-  devicesConfig.value.forEach((dConf, i: number) => {
-    const pos = evaluateKeyframes(dConf.keyframes?.position, frame)
-    const rot = evaluateKeyframes(dConf.keyframes?.rotation, frame)
+  objectsConfig.value.forEach((objConf, i: number) => {
+    const pos = evaluateKeyframes(objConf.keyframes?.position, frame)
+    const rot = evaluateKeyframes(objConf.keyframes?.rotation, frame)
 
-    if (pos && pos.length === 3) devicePositions.value[i] = [pos[0]!, pos[1]!, pos[2]!]
-    if (rot && rot.length === 3) deviceRotations.value[i] = [rot[0]!, rot[1]!, rot[2]!]
+    if (pos && pos.length === 3) objectPositions.value[i] = [pos[0]!, pos[1]!, pos[2]!]
+    if (rot && rot.length === 3) objectRotations.value[i] = [rot[0]!, rot[1]!, rot[2]!]
 
-    const nodeKeyframes = dConf.keyframes?.nodes
-    const instanceData = deviceInstances.value[i]
+    const nodeKeyframes = objConf.keyframes?.nodes
+    const instanceData = sceneInstances.value[i]
     if (nodeKeyframes && instanceData) {
       for (const [nodeName, tracks] of Object.entries(nodeKeyframes)) {
         const targetNode = instanceData.group.getObjectByName(nodeName)
@@ -333,7 +326,6 @@ onUnmounted(() => {
 
 const pixelRatio = typeof window !== 'undefined' ? Math.min(window.devicePixelRatio, 2) : 1
 
-// Dynamic Post-Processing & Lights
 const bloomConfig = computed(() => ({
   intensity: props.config.postProcessing?.bloom?.intensity ?? 0.3,
   luminanceThreshold: props.config.postProcessing?.bloom?.luminanceThreshold ?? 0.95,
@@ -341,13 +333,10 @@ const bloomConfig = computed(() => ({
   mipmapBlur: props.config.postProcessing?.bloom?.mipmapBlur ?? true,
 }))
 
-const ambientLight = computed(() => {
-  const amb = props.config.lights?.ambient
-  return {
-    intensity: amb?.intensity ?? 1.0,
-    color: amb?.color ?? '#ffffff',
-  }
-})
+const ambientLight = computed(() => ({
+  intensity: props.config.lights?.ambient?.intensity ?? 1.0,
+  color: props.config.lights?.ambient?.color ?? '#ffffff',
+}))
 
 const directionalLights = computed(() => {
   return (
@@ -358,19 +347,16 @@ const directionalLights = computed(() => {
   )
 })
 
-const pointLights = computed(() => {
-  return props.config.lights?.point || []
-})
+const pointLights = computed(() => props.config.lights?.point || [])
 
-// Automatically derived Contact Shadows
 const contactShadowsConfig = computed(() => {
-  const raw = props.config?.contactShadows
+  const raw = props.config.contactShadows
   if (!raw) return null
 
   const cfg = typeof raw === 'boolean' ? {} : raw
   if (cfg.position && cfg.scale) return cfg
 
-  if (deviceInstances.value.length === 0) return null
+  if (sceneInstances.value.length === 0) return null
 
   let minY = Infinity
   let minX = Infinity,
@@ -378,8 +364,8 @@ const contactShadowsConfig = computed(() => {
   let minZ = Infinity,
     maxZ = -Infinity
 
-  deviceInstances.value.forEach((inst, i) => {
-    const pos = devicePositions.value[i] || [0, 0, 0]
+  sceneInstances.value.forEach((inst, i) => {
+    const pos = objectPositions.value[i] || [0, 0, 0]
     const box = new THREE.Box3().setFromObject(inst.group)
     minY = Math.min(minY, box.min.y + pos[1])
     minX = Math.min(minX, box.min.x + pos[0])
@@ -402,7 +388,7 @@ const contactShadowsConfig = computed(() => {
   }
 })
 
-const elementsConfig = computed(() => props.config?.elements || [])
+const elementsConfig = computed(() => props.config.elements || [])
 </script>
 
 <template>
@@ -421,7 +407,6 @@ const elementsConfig = computed(() => props.config?.elements || [])
     >
       <primitive v-if="bgTexture" :object="bgTexture" attach="background" />
 
-      <!-- Free Euler Rotation Camera -->
       <TresPerspectiveCamera
         v-if="hasCameraRotation"
         ref="cameraRef"
@@ -431,7 +416,6 @@ const elementsConfig = computed(() => props.config?.elements || [])
         :fov="config.camera?.fov || 34"
       />
 
-      <!-- Look-At Target Camera -->
       <TresPerspectiveCamera
         v-else
         ref="cameraRef"
@@ -441,10 +425,8 @@ const elementsConfig = computed(() => props.config?.elements || [])
         :fov="config.camera?.fov || 34"
       />
 
-      <!-- Dynamic Ambient Light -->
       <TresAmbientLight :intensity="ambientLight.intensity" :color="ambientLight.color" />
 
-      <!-- Dynamic Directional Lights (Key, Fill, Rim) -->
       <TresDirectionalLight
         v-for="(light, idx) in directionalLights"
         :key="`dir-${idx}`"
@@ -453,7 +435,6 @@ const elementsConfig = computed(() => props.config?.elements || [])
         :color="light.color || '#ffffff'"
       />
 
-      <!-- Dynamic Point Lights (Light Spill, Neon Bounce) -->
       <TresPointLight
         v-for="(light, idx) in pointLights"
         :key="`pt-${idx}`"
@@ -464,7 +445,6 @@ const elementsConfig = computed(() => props.config?.elements || [])
         :decay="light.decay ?? 2"
       />
 
-      <!-- Auto-Generated Contact Shadows -->
       <ContactShadows
         v-if="contactShadowsConfig"
         :position="contactShadowsConfig.position"
@@ -476,7 +456,6 @@ const elementsConfig = computed(() => props.config?.elements || [])
         :color="contactShadowsConfig.color"
       />
 
-      <!-- Dynamic Stage Elements & Neon Primitives -->
       <TresMesh
         v-for="(el, idx) in elementsConfig"
         :key="`el-${idx}`"
@@ -506,16 +485,14 @@ const elementsConfig = computed(() => props.config?.elements || [])
         />
       </TresMesh>
 
-      <!-- Dynamic Device Instances -->
       <primitive
-        v-for="(instance, index) in deviceInstances"
-        :key="`dev-${index}`"
+        v-for="(instance, index) in sceneInstances"
+        :key="`obj-${index}`"
         :object="instance.group"
-        :position="devicePositions[index]"
-        :rotation="deviceRotations[index]"
+        :position="objectPositions[index]"
+        :rotation="objectRotations[index]"
       />
 
-      <!-- Dynamic Post-Processing with Multisampling (MSAA) -->
       <EffectComposerPmndrs :multisampling="8">
         <BloomPmndrs
           :intensity="bloomConfig.intensity"

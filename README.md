@@ -2,11 +2,11 @@
   <img src="./public/logo.png" lt="Logo" width="65" />
 <p>
 
-# Mockup Renderer
+# Mockup Studio
 
 ![Landing](public/previews/landing.webp)
 
-> Vue + Typescript + Tailwind + Tauri Template
+> 3D device mockup and video animation studio for creating high-polish product showcases and launch assets
 
 - 🚀 PWA
 - ✋ Push Notification
