@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { Output, BufferTarget, Mp4OutputFormat, CanvasSource } from 'mediabunny'
+import { useScreenSafeArea } from '@vueuse/core'
 
 import MockupScene from './components/MockupScene.vue'
 import TimelinePanel from './components/TimelinePanel.vue'
@@ -10,6 +11,7 @@ import templates from './templates'
 import type { SceneAnimationConfig } from './utils/types'
 
 const { version } = useAppUpdater({ checkOnStartup: true, autoInstall: true })
+const { top, right, bottom, left } = useScreenSafeArea()
 
 const selectedTemplateKey = ref('Macbook Podium Showcase')
 const config = ref<SceneAnimationConfig>(
@@ -136,7 +138,12 @@ onUnmounted(() => {
   <div class="relative flex h-screen w-screen items-center justify-center overflow-hidden bg-black">
     <div
       v-if="!isExporting && isReady"
-      class="absolute top-4 inset-x-4 z-50 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-0 pointer-events-none"
+      class="absolute z-50 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-0 pointer-events-none"
+      :style="{
+        top: `calc(0.25rem + ${top})`,
+        left: `calc(0.25rem + ${left})`,
+        right: `calc(1rem + ${right})`,
+      }"
     >
       <div class="pointer-events-auto w-full sm:w-auto flex justify-center sm:justify-start">
         <select
@@ -214,6 +221,7 @@ onUnmounted(() => {
     >
       <TimelinePanel
         v-show="showTimeline && isReady && !isExporting"
+        :style="{ bottom: `calc(1.5rem + ${bottom})` }"
         :current-frame="currentFrame"
         :duration-frames="durationFrames"
         :fps="fps"

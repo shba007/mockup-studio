@@ -6,7 +6,7 @@
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5173",
-    "beforeDevCommand": "dotenvx run -f .env.native -- vp dev",
+    "beforeDevCommand": "dotenvx run -f .env.native -- vp dev --host",
     "beforeBuildCommand": "dotenvx run -f .env.native -- vp build"
   },
   "app": {
@@ -39,7 +39,6 @@
     "android": {
       "debugApplicationIdSuffix": ".debug"
     },
-    "externalBin": ["bin/ffmpeg", "bin/ffprobe"],
     "createUpdaterArtifacts": true
   },
   "plugins": {
