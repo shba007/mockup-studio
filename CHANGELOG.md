@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.1.1
+
+[compare changes](https://github.com/shba007/mockup-studio/compare/v0.1.0...v0.1.1)
+
+### 🚀 Enhancements
+
+- **android:** Initialize android project structure and resources ([59b2ad4](https://github.com/shba007/mockup-studio/commit/59b2ad4))
+
+### ❤️ Contributors
+
+- Shirsendu Bairagi ([@shba007](https://github.com/shba007))
+
 ## v0.1.0
 
 ### 🚀 Enhancements
