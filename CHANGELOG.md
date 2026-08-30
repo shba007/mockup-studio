@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.1.3
+
+[compare changes](https://github.com/shba007/mockup-studio/compare/v0.1.2...v0.1.3)
+
+### 🚀 Enhancements
+
+- Update dependencies and remove unused binaries; enhance mobile layout support ([0820e9a](https://github.com/shba007/mockup-studio/commit/0820e9a))
+
+### 💅 Refactors
+
+- Streamline video export process and enhance mobile support ([346756a](https://github.com/shba007/mockup-studio/commit/346756a))
+
+### ❤️ Contributors
+
+- Shirsendu Bairagi ([@shba007](https://github.com/shba007))
+
 ## v0.1.2
 
 [compare changes](https://github.com/shba007/mockup-studio/compare/v0.1.1...v0.1.2)
