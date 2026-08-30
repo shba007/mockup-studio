@@ -1,29 +1,28 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import type { SceneAnimationConfig } from '../utils/types'
 
 const props = defineProps<{
   currentFrame: number
   durationFrames: number
   fps: number
   isPlaying: boolean
-  config: Record<string, unknown>
+  config: SceneAnimationConfig
 }>()
 
 const emit = defineEmits<{
-  (e: 'update:currentFrame', frame: number): void
   (e: 'togglePlay'): void
   (e: 'seek', frame: number): void
-  (e: 'exportSequence'): void
 }>()
 
 const tracks = computed(() => {
   const camera = props.config.camera?.keyframes || {}
   const trackList: { name: string; frames: number[] }[] = []
-  const devices = props.config.devices || (props.config.device ? [props.config.device] : [])
+  const objects = props.config.objects || []
 
-  devices.forEach((dev, index: number) => {
-    const name = dev.name || `Device ${index + 1}`
-    const kf = dev.keyframes || {}
+  objects.forEach((obj, index: number) => {
+    const name = obj.name || `Object ${index + 1}`
+    const kf = obj.keyframes || {}
 
     if (kf.position) {
       trackList.push({ name: `${name} Pos`, frames: kf.position.map((k) => k.frame) })
@@ -59,9 +58,7 @@ function handleTimelineClick(event: MouseEvent) {
   <div
     class="absolute bottom-6 left-1/2 z-50 w-[92vw] max-w-[900px] -translate-x-1/2 select-none rounded-xl border border-white/10 bg-[#121218]/85 px-5 py-4 font-mono text-slate-200 shadow-2xl backdrop-blur-md"
   >
-    <!-- Controls Header -->
     <div class="mb-3.5 flex items-center justify-between">
-      <!-- Buttons -->
       <div class="flex items-center gap-2">
         <button
           class="cursor-pointer rounded-md bg-indigo-600 px-3.5 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-indigo-700 active:scale-95"
@@ -76,16 +73,8 @@ function handleTimelineClick(event: MouseEvent) {
         >
           ⏮ Reset
         </button>
-
-        <button
-          class="cursor-pointer rounded-md bg-yellow-500 px-3.5 py-1.5 text-xs font-semibold text-black transition-colors hover:bg-yellow-400 active:scale-95"
-          @click="emit('exportSequence')"
-        >
-          📷 Export
-        </button>
       </div>
 
-      <!-- Time Display -->
       <div class="flex items-center gap-2 text-xs text-slate-400">
         <span class="font-bold text-sky-400">F: {{ Math.floor(currentFrame) }}</span>
         <span>/ {{ durationFrames }}</span>
@@ -95,9 +84,7 @@ function handleTimelineClick(event: MouseEvent) {
       </div>
     </div>
 
-    <!-- Tracks & Scrubber -->
     <div class="relative flex cursor-pointer flex-col gap-2 py-2" @click="handleTimelineClick">
-      <!-- Playhead -->
       <div
         class="pointer-events-none absolute inset-y-0 z-10 w-0.5 -translate-x-1/2"
         :style="{ left: `${progressPercent}%` }"
@@ -105,7 +92,6 @@ function handleTimelineClick(event: MouseEvent) {
         <div class="h-full w-0.5 bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]"></div>
       </div>
 
-      <!-- Keyframe Tracks -->
       <div v-for="track in tracks" :key="track.name" class="flex h-5 items-center gap-3">
         <span class="w-32 truncate text-[11px] text-slate-500">
           {{ track.name }}

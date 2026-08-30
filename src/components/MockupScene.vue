@@ -15,36 +15,60 @@ const props = defineProps<{
   currentFrame: number
 }>()
 
-const cameraRef = shallowRef<THREE.PerspectiveCamera>()
-const cameraPosition = ref<[number, number, number]>([0, 0, 4.2])
-const cameraRotation = ref<[number, number, number]>([0, 0, 0])
+const isMobile =
+  typeof window !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
 
-const hasCameraRotation = computed(() => !!props.config.camera?.keyframes?.rotation)
-const objectsConfig = computed(() => props.config.objects || [])
+const baseW = props.config.output?.width || 1920
+const baseH = props.config.output?.height || 1080
 
-const activeScreenMedia = computed(
-  () => (props.overrides?.screenMedia || props.config.variables?.screenMedia) as string | undefined,
-)
+const MAX_GPU_RES = isMobile ? 1024 : 4096
+const renderScale = Math.min(1, MAX_GPU_RES / Math.max(baseW, baseH))
 
-const activeBg = computed(
-  () =>
-    (props.overrides?.backgroundColor ||
-      props.config.variables?.backgroundGradient ||
-      props.config.variables?.backgroundColor ||
-      '#0d0f12') as string,
-)
+const outWidth = computed(() => Math.floor(baseW * renderScale))
+const outHeight = computed(() => Math.floor(baseH * renderScale))
+const pixelRatio = isMobile
+  ? 1
+  : Math.min(typeof window !== 'undefined' ? window.devicePixelRatio : 1, 2)
+
+const windowScale = ref(1)
+const canvasWrapperRef = ref<HTMLElement | null>(null)
+const isCanvasSized = ref(false)
+
+function updateScale() {
+  if (typeof window !== 'undefined') {
+    const scaleX = window.innerWidth / outWidth.value
+    const scaleY = window.innerHeight / outHeight.value
+    windowScale.value = Math.max(scaleX, scaleY)
+  }
+}
+
+onMounted(() => {
+  updateScale()
+  window.addEventListener('resize', updateScale)
+
+  const checkSize = () => {
+    if (canvasWrapperRef.value && canvasWrapperRef.value.clientWidth > 0) {
+      isCanvasSized.value = true
+    } else {
+      requestAnimationFrame(checkSize)
+    }
+  }
+  checkSize()
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', updateScale)
+})
 
 const bgTexture = shallowRef<THREE.CanvasTexture>()
 
 function generateBackgroundTexture() {
   const bgCanvas = document.createElement('canvas')
-  const outW = props.config.output?.width || 1920
-  const outH = props.config.output?.height || 1080
-  const maxRes = 4096
-  const scale = maxRes / Math.max(outW, outH)
+  const maxBgRes = isMobile ? 1024 : 2048
+  const bgScale = Math.min(1, maxBgRes / Math.max(outWidth.value, outHeight.value))
 
-  bgCanvas.width = outW * scale
-  bgCanvas.height = outH * scale
+  bgCanvas.width = Math.max(1, Math.floor(outWidth.value * bgScale))
+  bgCanvas.height = Math.max(1, Math.floor(outHeight.value * bgScale))
 
   const ctx = bgCanvas.getContext('2d')
   if (!ctx) return
@@ -70,12 +94,15 @@ function generateBackgroundTexture() {
   tex.needsUpdate = true
   bgTexture.value = tex
 }
-generateBackgroundTexture()
 
 function createFallbackTexture(): THREE.CanvasTexture {
   const canvas = document.createElement('canvas')
-  canvas.width = 1179
-  canvas.height = 2556
+  const maxDim = isMobile ? 1024 : 2048
+  const scale = Math.min(1, maxDim / 2556)
+
+  canvas.width = Math.floor(1179 * scale)
+  canvas.height = Math.floor(2556 * scale)
+
   const ctx = canvas.getContext('2d')!
   const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height)
   grad.addColorStop(0, '#4f46e5')
@@ -83,9 +110,9 @@ function createFallbackTexture(): THREE.CanvasTexture {
   ctx.fillStyle = grad
   ctx.fillRect(0, 0, canvas.width, canvas.height)
   ctx.fillStyle = '#ffffff'
-  ctx.font = 'bold 72px sans-serif'
+  ctx.font = `bold ${Math.floor(72 * scale)}px sans-serif`
   ctx.textAlign = 'center'
-  ctx.fillText('App Screen Preview', canvas.width / 2, canvas.height / 2 - 40)
+  ctx.fillText('App Screen Preview', canvas.width / 2, canvas.height / 2)
 
   const texture = new THREE.CanvasTexture(canvas)
   texture.colorSpace = THREE.SRGBColorSpace
@@ -94,12 +121,38 @@ function createFallbackTexture(): THREE.CanvasTexture {
 
 const texLoader = new THREE.TextureLoader()
 const textureCache = new Map<string, THREE.Texture>()
+const MAX_SAFE_TEXTURE_DIMENSION = isMobile ? 1024 : 2048
+
+async function loadAndClampImage(url: string): Promise<HTMLCanvasElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => {
+      let { width, height } = img
+      if (width > MAX_SAFE_TEXTURE_DIMENSION || height > MAX_SAFE_TEXTURE_DIMENSION) {
+        const scale = MAX_SAFE_TEXTURE_DIMENSION / Math.max(width, height)
+        width = Math.floor(width * scale)
+        height = Math.floor(height * scale)
+      }
+
+      const canvas = document.createElement('canvas')
+      canvas.width = width
+      canvas.height = height
+      const ctx = canvas.getContext('2d')!
+      ctx.drawImage(img, 0, 0, width, height)
+      resolve(canvas)
+    }
+    img.onerror = reject
+    img.src = url
+  })
+}
 
 const loadCachedTexture = async (url?: string): Promise<THREE.Texture> => {
   if (!url) return createFallbackTexture()
   if (textureCache.has(url)) return textureCache.get(url)!
   try {
-    const tex = await texLoader.loadAsync(url)
+    const clampedCanvas = await loadAndClampImage(url)
+    const tex = new THREE.CanvasTexture(clampedCanvas)
     tex.colorSpace = THREE.SRGBColorSpace
     textureCache.set(url, tex)
     return tex
@@ -130,13 +183,34 @@ function applyTextureTransform(
     tex.offset.set(transformConfig.offset[0], transformConfig.offset[1])
   }
 
-  tex.anisotropy = 16
+  tex.anisotropy = isMobile ? 2 : 16
   tex.minFilter = THREE.LinearMipmapLinearFilter
   tex.magFilter = THREE.LinearFilter
   tex.generateMipmaps = true
   tex.needsUpdate = true
   return tex
 }
+
+const cameraRef = shallowRef<THREE.PerspectiveCamera>()
+const cameraPosition = ref<[number, number, number]>([0, 0, 4.2])
+const cameraRotation = ref<[number, number, number]>([0, 0, 0])
+
+const hasCameraRotation = computed(() => !!props.config.camera?.keyframes?.rotation)
+const objectsConfig = computed(() => props.config.objects || [])
+
+const activeScreenMedia = computed(
+  () => (props.overrides?.screenMedia || props.config.variables?.screenMedia) as string | undefined,
+)
+
+const activeBg = computed(
+  () =>
+    (props.overrides?.backgroundColor ||
+      props.config.variables?.backgroundGradient ||
+      props.config.variables?.backgroundColor ||
+      '#0d0f12') as string,
+)
+
+generateBackgroundTexture()
 
 const gltfLoader = new GLTFLoader()
 const modelCache = new Map<string, THREE.Group>()
@@ -303,29 +377,6 @@ watchEffect(() => {
   })
 })
 
-const outWidth = computed(() => props.config.output?.width || 1920)
-const outHeight = computed(() => props.config.output?.height || 1080)
-const windowScale = ref(1)
-
-function updateScale() {
-  if (typeof window !== 'undefined') {
-    const scaleX = window.innerWidth / outWidth.value
-    const scaleY = window.innerHeight / outHeight.value
-    windowScale.value = Math.max(scaleX, scaleY)
-  }
-}
-
-onMounted(() => {
-  updateScale()
-  window.addEventListener('resize', updateScale)
-})
-
-onUnmounted(() => {
-  window.removeEventListener('resize', updateScale)
-})
-
-const pixelRatio = typeof window !== 'undefined' ? Math.min(window.devicePixelRatio, 2) : 1
-
 const bloomConfig = computed(() => ({
   intensity: props.config.postProcessing?.bloom?.intensity ?? 0.3,
   luminanceThreshold: props.config.postProcessing?.bloom?.luminanceThreshold ?? 0.95,
@@ -384,7 +435,7 @@ const contactShadowsConfig = computed(() => {
     blur: cfg.blur ?? 2.2,
     far: cfg.far ?? 3.5,
     color: cfg.color || '#070b1e',
-    resolution: cfg.resolution ?? 512,
+    resolution: isMobile ? 256 : (cfg.resolution ?? 512),
   }
 })
 
@@ -393,6 +444,8 @@ const elementsConfig = computed(() => props.config.elements || [])
 
 <template>
   <div
+    ref="canvasWrapperRef"
+    v-if="outWidth > 0 && outHeight > 0"
     class="absolute top-1/2 left-1/2 origin-center overflow-hidden"
     :style="{
       width: `${outWidth}px`,
@@ -403,7 +456,7 @@ const elementsConfig = computed(() => props.config.elements || [])
     <TresCanvas
       :pixel-ratio="pixelRatio"
       :output-color-space="THREE.SRGBColorSpace"
-      :gl="{ preserveDrawingBuffer: true, antialias: true }"
+      :gl="{ preserveDrawingBuffer: true, antialias: true, powerPreference: 'high-performance' }"
     >
       <primitive v-if="bgTexture" :object="bgTexture" attach="background" />
 
@@ -493,7 +546,7 @@ const elementsConfig = computed(() => props.config.elements || [])
         :rotation="objectRotations[index]"
       />
 
-      <EffectComposerPmndrs :multisampling="8">
+      <EffectComposerPmndrs v-if="!isMobile && isCanvasSized" :multisampling="4">
         <BloomPmndrs
           :intensity="bloomConfig.intensity"
           :luminance-threshold="bloomConfig.luminanceThreshold"

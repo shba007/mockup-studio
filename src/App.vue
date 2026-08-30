@@ -1,9 +1,5 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { Command } from '@tauri-apps/plugin-shell'
-import { save } from '@tauri-apps/plugin-dialog'
-import { mkdir, writeFile, remove } from '@tauri-apps/plugin-fs'
-import { tempDir, join } from '@tauri-apps/api/path'
 import { Output, BufferTarget, Mp4OutputFormat, CanvasSource } from 'mediabunny'
 
 import MockupScene from './components/MockupScene.vue'
@@ -11,7 +7,7 @@ import TimelinePanel from './components/TimelinePanel.vue'
 import { useAppUpdater } from './composables/useAppUpdater'
 
 import templates from './templates'
-import type { SceneAnimationConfig } from './utils/types.ts'
+import type { SceneAnimationConfig } from './utils/types'
 
 const { version } = useAppUpdater({ checkOnStartup: true, autoInstall: true })
 
@@ -26,10 +22,10 @@ const isPlaying = ref(true)
 const showTimeline = ref(false)
 const isExporting = ref(false)
 const exportProgress = ref(0)
+const exportStatus = ref('Rendering Frames...')
+
 let animationFrameId: number | null = null
 let lastTimestamp = 0
-
-const exportStatus = ref('Rendering Frames...')
 
 const durationFrames = computed(() => config.value?.output?.durationFrames || 120)
 const fps = computed(() => config.value?.output?.fps || 60)
@@ -61,80 +57,14 @@ function loop(timestamp: number) {
   animationFrameId = requestAnimationFrame(loop)
 }
 
-async function exportWithFfmpeg(canvas: HTMLCanvasElement) {
-  const defaultFileName = `${(config.value.id as string) || 'mockup'}.mp4`
-  const outputPath = await save({
-    defaultPath: defaultFileName,
-    filters: [{ name: 'MP4 Video', extensions: ['mp4'] }],
-  })
+async function exportSequence() {
+  const canvas = document.querySelector('canvas') as HTMLCanvasElement
+  if (!canvas) return
 
-  if (!outputPath) {
-    isExporting.value = false
-    return
-  }
-
-  exportStatus.value = 'Rendering frames...'
-  const sysTemp = await tempDir()
-  const timestamp = Math.floor(Date.now() / 1000)
-  const sessionDir = await join(sysTemp, 'mockup-studio', String(timestamp))
-  const tempFramesDir = await join(sessionDir, 'frames')
-  await mkdir(tempFramesDir, { recursive: true })
-
-  try {
-    const totalFrames = durationFrames.value
-    for (let i = 0; i <= totalFrames; i++) {
-      seek(i)
-      exportProgress.value = Math.round((i / totalFrames) * 80)
-      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
-
-      const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, 'image/png'))
-      if (blob) {
-        const buffer = await blob.arrayBuffer()
-        const framePath = await join(tempFramesDir, `frame_${String(i).padStart(4, '0')}.png`)
-        await writeFile(framePath, new Uint8Array(buffer))
-      }
-    }
-
-    exportStatus.value = 'Encoding with FFmpeg...'
-    exportProgress.value = 85
-
-    const inputPattern = await join(tempFramesDir, 'frame_%04d.png')
-    const ffmpegArgs = [
-      '-y',
-      '-framerate',
-      String(fps.value),
-      '-i',
-      inputPattern,
-      '-vf',
-      'pad=ceil(iw/2)*2:ceil(ih/2)*2',
-      '-c:v',
-      'libx264',
-      '-pix_fmt',
-      'yuv420p',
-      '-crf',
-      '15',
-      '-preset',
-      'slow',
-      outputPath,
-    ]
-
-    const ffmpegCommand = Command.sidecar('bin/ffmpeg', ffmpegArgs)
-    const result = await ffmpegCommand.execute()
-
-    if (result.code !== 0) throw new Error(result.stderr)
-    exportProgress.value = 100
-  } finally {
-    try {
-      await remove(sessionDir, { recursive: true })
-    } catch {}
-    setTimeout(() => {
-      isExporting.value = false
-    }, 800)
-  }
-}
-
-async function exportWithWebCodec(canvas: HTMLCanvasElement) {
-  exportStatus.value = 'Encoding video on device...'
+  isExporting.value = true
+  isPlaying.value = false
+  exportProgress.value = 0
+  exportStatus.value = 'Encoding video...'
 
   const target = new BufferTarget()
   const output = new Output({
@@ -158,7 +88,6 @@ async function exportWithWebCodec(canvas: HTMLCanvasElement) {
     seek(i)
     exportProgress.value = Math.round((i / totalFrames) * 95)
     await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
-
     await videoSource.add(i / fps.value, 1 / fps.value)
   }
 
@@ -178,26 +107,6 @@ async function exportWithWebCodec(canvas: HTMLCanvasElement) {
   }, 800)
 }
 
-const isDesktop =
-  typeof window !== 'undefined' && !/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
-
-async function exportSequence() {
-  const canvas = document.querySelector('canvas') as HTMLCanvasElement
-  if (!canvas) return
-
-  isExporting.value = true
-  isPlaying.value = false
-  exportProgress.value = 0
-
-  if (isDesktop) {
-    console.log('Export with FFmepg')
-    await exportWithFfmpeg(canvas)
-  } else {
-    console.log('Export with Webcodec')
-    await exportWithWebCodec(canvas)
-  }
-}
-
 function handleKeydown(e: KeyboardEvent) {
   if (e.key.toLowerCase() === 't') {
     showTimeline.value = !showTimeline.value
@@ -205,8 +114,6 @@ function handleKeydown(e: KeyboardEvent) {
 }
 
 onMounted(() => {
-  console.log('App Version', version.value)
-
   const globalPayload = (window as unknown as { __RENDER_PAYLOAD__?: Record<string, unknown> })
     .__RENDER_PAYLOAD__
   if (globalPayload) {
@@ -227,25 +134,44 @@ onUnmounted(() => {
 
 <template>
   <div class="relative flex h-screen w-screen items-center justify-center overflow-hidden bg-black">
-    <!-- Template Selector -->
-    <div v-if="!isExporting && isReady" class="absolute top-6 left-6 z-50">
-      <select
-        v-model="selectedTemplateKey"
-        @change="handleTemplateChange"
-        class="cursor-pointer appearance-none rounded-lg border border-white/10 bg-[#121218]/85 px-4 py-2.5 font-mono text-[13px] text-slate-200 shadow-2xl backdrop-blur-md outline-none transition-colors hover:border-white/25 focus:border-indigo-500/50"
-      >
-        <option
-          v-for="key in Object.keys(templates)"
-          :key="key"
-          :value="key"
-          class="bg-[#121218] text-slate-200"
+    <div
+      v-if="!isExporting && isReady"
+      class="absolute top-4 inset-x-4 z-50 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-0 pointer-events-none"
+    >
+      <div class="pointer-events-auto w-full sm:w-auto flex justify-center sm:justify-start">
+        <select
+          v-model="selectedTemplateKey"
+          @change="handleTemplateChange"
+          class="cursor-pointer appearance-none rounded-lg border border-white/10 bg-[#121218]/85 px-4 py-2 font-mono text-[13px] text-slate-200 shadow-2xl backdrop-blur-md outline-none transition-colors hover:border-white/25 focus:border-indigo-500/50 max-w-[250px] truncate"
         >
-          {{ key }}
-        </option>
-      </select>
+          <option
+            v-for="key in Object.keys(templates)"
+            :key="key"
+            :value="key"
+            class="bg-[#121218] text-slate-200"
+          >
+            {{ key }}
+          </option>
+        </select>
+      </div>
+
+      <div class="flex items-center gap-2 pointer-events-auto">
+        <button
+          class="cursor-pointer rounded-lg border border-white/10 bg-[#121218]/85 px-3 py-2 font-mono text-[13px] text-slate-200 shadow-2xl backdrop-blur-md transition-colors hover:border-white/25 active:scale-95"
+          @click="showTimeline = !showTimeline"
+        >
+          {{ showTimeline ? '✕ Hide Timeline' : '⏱ Timeline' }}
+        </button>
+
+        <button
+          class="cursor-pointer rounded-lg bg-indigo-600 px-4 py-2 font-mono text-[13px] font-semibold text-white shadow-2xl transition-colors hover:bg-indigo-500 active:scale-95"
+          @click="exportSequence"
+        >
+          📷 Export Video
+        </button>
+      </div>
     </div>
 
-    <!-- Export Overlay -->
     <div
       v-if="isExporting"
       class="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/85 font-mono text-white backdrop-blur-md"
@@ -263,7 +189,6 @@ onUnmounted(() => {
       <p class="text-sm text-zinc-400">{{ exportProgress }}% Complete</p>
     </div>
 
-    <!-- 3D Scene Viewport -->
     <Suspense>
       <MockupScene
         v-if="isReady"
@@ -279,7 +204,6 @@ onUnmounted(() => {
       </template>
     </Suspense>
 
-    <!-- Timeline Panel -->
     <Transition
       enter-active-class="transition-all duration-200 ease-out"
       enter-from-class="opacity-0 translate-y-4"
@@ -297,7 +221,6 @@ onUnmounted(() => {
         :config="config"
         @seek="seek"
         @toggle-play="togglePlay"
-        @export-sequence="exportSequence"
       />
     </Transition>
   </div>
