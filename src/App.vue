@@ -4,6 +4,7 @@ import { Command } from '@tauri-apps/plugin-shell'
 import { save } from '@tauri-apps/plugin-dialog'
 import { mkdir, writeFile, remove } from '@tauri-apps/plugin-fs'
 import { tempDir, join } from '@tauri-apps/api/path'
+import { Output, BufferTarget, Mp4OutputFormat, CanvasSource } from 'mediabunny'
 
 import MockupScene from './components/MockupScene.vue'
 import TimelinePanel from './components/TimelinePanel.vue'
@@ -60,54 +61,44 @@ function loop(timestamp: number) {
   animationFrameId = requestAnimationFrame(loop)
 }
 
-async function exportSequence() {
-  const canvas = document.querySelector('canvas') as HTMLCanvasElement
-  if (!canvas) return
-
-  // 1. Prompt user for output .mp4 destination
+async function exportWithFfmpeg(canvas: HTMLCanvasElement) {
   const defaultFileName = `${(config.value.id as string) || 'mockup'}.mp4`
   const outputPath = await save({
     defaultPath: defaultFileName,
     filters: [{ name: 'MP4 Video', extensions: ['mp4'] }],
   })
 
-  if (!outputPath) return
+  if (!outputPath) {
+    isExporting.value = false
+    return
+  }
 
-  isExporting.value = true
-  isPlaying.value = false
-  exportProgress.value = 0
   exportStatus.value = 'Rendering frames...'
-
   const sysTemp = await tempDir()
-  const timestampInSeconds = Math.floor(Date.now() / 1000)
-  const sessionDir = await join(sysTemp, 'mockup-studio', String(timestampInSeconds))
+  const timestamp = Math.floor(Date.now() / 1000)
+  const sessionDir = await join(sysTemp, 'mockup-studio', String(timestamp))
   const tempFramesDir = await join(sessionDir, 'frames')
   await mkdir(tempFramesDir, { recursive: true })
 
   try {
     const totalFrames = durationFrames.value
-
-    // 3. Render and save each frame directly to disk
     for (let i = 0; i <= totalFrames; i++) {
       seek(i)
       exportProgress.value = Math.round((i / totalFrames) * 80)
-      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
 
-      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'))
+      const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, 'image/png'))
       if (blob) {
         const buffer = await blob.arrayBuffer()
-        const frameFileName = `frame_${String(i).padStart(4, '0')}.png`
-        const frameFilePath = await join(tempFramesDir, frameFileName)
-        await writeFile(frameFilePath, new Uint8Array(buffer))
+        const framePath = await join(tempFramesDir, `frame_${String(i).padStart(4, '0')}.png`)
+        await writeFile(framePath, new Uint8Array(buffer))
       }
     }
 
-    // 4. Encode video with FFmpeg Sidecar
-    exportStatus.value = 'Encoding video with FFmpeg...'
+    exportStatus.value = 'Encoding with FFmpeg...'
     exportProgress.value = 85
 
     const inputPattern = await join(tempFramesDir, 'frame_%04d.png')
-
     const ffmpegArgs = [
       '-y',
       '-framerate',
@@ -128,37 +119,82 @@ async function exportSequence() {
     ]
 
     const ffmpegCommand = Command.sidecar('bin/ffmpeg', ffmpegArgs)
-
-    ffmpegCommand.on('close', (data) => {
-      console.log(`FFmpeg process finished with code ${data.code}`)
-    })
-
-    ffmpegCommand.stderr.on('data', (line) => {
-      console.log(`[FFmpeg]: ${line}`)
-    })
-
     const result = await ffmpegCommand.execute()
 
-    if (result.code !== 0) {
-      throw new Error(`FFmpeg failed with exit code ${result.code}: ${result.stderr}`)
-    }
-
+    if (result.code !== 0) throw new Error(result.stderr)
     exportProgress.value = 100
-    exportStatus.value = 'Done!'
-  } catch (error) {
-    console.error('Render pipeline error:', error)
-    alert(`Export failed: ${error instanceof Error ? error.message : String(error)}`)
   } finally {
-    // 5. Clean up the session directory
     try {
       await remove(sessionDir, { recursive: true })
-    } catch (cleanupErr) {
-      console.warn('Failed to remove temp directory:', cleanupErr)
-    }
-
+    } catch {}
     setTimeout(() => {
       isExporting.value = false
     }, 800)
+  }
+}
+
+async function exportWithWebCodec(canvas: HTMLCanvasElement) {
+  exportStatus.value = 'Encoding video on device...'
+
+  const target = new BufferTarget()
+  const output = new Output({
+    target,
+    format: new Mp4OutputFormat({
+      fastStart: 'in-memory',
+    }),
+  })
+
+  const videoSource = new CanvasSource(canvas, {
+    codec: 'avc',
+    bitrate: 8_000_000,
+  })
+
+  output.addVideoTrack(videoSource)
+  await output.start()
+
+  const totalFrames = durationFrames.value
+
+  for (let i = 0; i <= totalFrames; i++) {
+    seek(i)
+    exportProgress.value = Math.round((i / totalFrames) * 95)
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
+
+    await videoSource.add(i / fps.value, 1 / fps.value)
+  }
+
+  await output.finalize()
+
+  const mp4Blob = new Blob([target.buffer!], { type: 'video/mp4' })
+  const url = URL.createObjectURL(mp4Blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${config.value.id || 'mockup'}.mp4`
+  a.click()
+  URL.revokeObjectURL(url)
+
+  exportProgress.value = 100
+  setTimeout(() => {
+    isExporting.value = false
+  }, 800)
+}
+
+const isDesktop =
+  typeof window !== 'undefined' && !/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+
+async function exportSequence() {
+  const canvas = document.querySelector('canvas') as HTMLCanvasElement
+  if (!canvas) return
+
+  isExporting.value = true
+  isPlaying.value = false
+  exportProgress.value = 0
+
+  if (isDesktop) {
+    console.log('Export with FFmepg')
+    await exportWithFfmpeg(canvas)
+  } else {
+    console.log('Export with Webcodec')
+    await exportWithWebCodec(canvas)
   }
 }
 
@@ -174,7 +210,7 @@ onMounted(() => {
   const globalPayload = (window as unknown as { __RENDER_PAYLOAD__?: Record<string, unknown> })
     .__RENDER_PAYLOAD__
   if (globalPayload) {
-    if (globalPayload.template) config.value = globalPayload.template
+    if (globalPayload.template) config.value = globalPayload.template as SceneAnimationConfig
     if (globalPayload.overrides) overrides.value = globalPayload.overrides
   }
 
@@ -208,6 +244,7 @@ onUnmounted(() => {
         </option>
       </select>
     </div>
+
     <!-- Export Overlay -->
     <div
       v-if="isExporting"
