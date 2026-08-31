@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.1.4
+
+[compare changes](https://github.com/shba007/mockup-studio/compare/v0.1.3...v0.1.4)
+
+### 🚀 Enhancements
+
+- Implement native file saving for Tauri; add fallback for web browser ([6f6f5e1](https://github.com/shba007/mockup-studio/commit/6f6f5e1))
+
+### ❤️ Contributors
+
+- Shirsendu Bairagi ([@shba007](https://github.com/shba007))
+
 ## v0.1.3
 
 [compare changes](https://github.com/shba007/mockup-studio/compare/v0.1.2...v0.1.3)
