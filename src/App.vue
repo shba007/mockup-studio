@@ -2,6 +2,8 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { Output, BufferTarget, Mp4OutputFormat, CanvasSource } from 'mediabunny'
 import { useScreenSafeArea } from '@vueuse/core'
+import { save } from '@tauri-apps/plugin-dialog'
+import { writeFile } from '@tauri-apps/plugin-fs'
 
 import MockupScene from './components/MockupScene.vue'
 import TimelinePanel from './components/TimelinePanel.vue'
@@ -95,13 +97,35 @@ async function exportSequence() {
 
   await output.finalize()
 
-  const mp4Blob = new Blob([target.buffer!], { type: 'video/mp4' })
-  const url = URL.createObjectURL(mp4Blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `${config.value.id || 'mockup'}.mp4`
-  a.click()
-  URL.revokeObjectURL(url)
+  const defaultFileName = `${config.value.id || 'mockup'}.mp4`
+  const isTauri = '__TAURI_INTERNALS__' in window
+
+  if (isTauri) {
+    // 1. Native Tauri Mobile & Desktop Save
+    try {
+      const filePath = await save({
+        defaultPath: defaultFileName,
+        filters: [{ name: 'MP4 Video', extensions: ['mp4'] }],
+      })
+
+      if (filePath) {
+        const uint8Data = new Uint8Array(target.buffer!)
+        await writeFile(filePath, uint8Data)
+      }
+    } catch (error) {
+      console.error('Failed to save file:', error)
+      alert('Failed to save video.')
+    }
+  } else {
+    // 2. Fallback for pure Web Browser usage
+    const mp4Blob = new Blob([target.buffer!], { type: 'video/mp4' })
+    const url = URL.createObjectURL(mp4Blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = defaultFileName
+    a.click()
+    URL.revokeObjectURL(url)
+  }
 
   exportProgress.value = 100
   setTimeout(() => {
