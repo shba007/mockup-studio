@@ -12,6 +12,7 @@ import EditorPanel from './components/EditorPanel.vue'
 
 import templates from './templates'
 import type { SceneAnimationConfig, Project2DConfig, Project3DConfig } from './utils/types'
+import { PLATFORM_PRESETS } from './constants/presets'
 
 const { top, right, bottom, left } = useScreenSafeArea()
 
@@ -24,7 +25,7 @@ const isReady = ref(false)
 const currentFrame = ref(0)
 const isPlaying = ref(false)
 const showTimeline = ref(false)
-const showEditor = ref(true)
+const showEditor = ref(false)
 const isExporting = ref(false)
 const exportProgress = ref(0)
 const exportStatus = ref('Processing...')
@@ -173,6 +174,13 @@ function handleKeydown(e: KeyboardEvent) {
   }
 }
 
+const effectiveWidth = computed(
+  () => (overrides.value.outputWidth as number) ?? config.value.output.width,
+)
+const effectiveHeight = computed(
+  () => (overrides.value.outputHeight as number) ?? config.value.output.height,
+)
+
 onMounted(() => {
   isReady.value = true
   isPlaying.value = !isStatic.value
@@ -280,9 +288,9 @@ onUnmounted(() => {
       <div class="flex items-center gap-2 truncate">
         <span class="font-semibold text-white">{{ config.name || config.id }}</span>
         <span class="text-zinc-500">·</span>
-        <span class="text-zinc-400 uppercase tracking-wider text-[10px]"
-          >{{ config.kind }} {{ config.mode }}</span
-        >
+        <span class="text-zinc-400 uppercase tracking-wider text-[10px]">
+          {{ config.kind }} {{ config.mode }} ({{ effectiveWidth }}×{{ effectiveHeight }})
+        </span>
       </div>
 
       <div class="flex items-center gap-2">

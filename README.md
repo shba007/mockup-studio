@@ -6,7 +6,7 @@
 
 ![Landing](public/previews/landing.webp)
 
-> 3D device mockup and video animation studio for creating high-polish product showcases and launch assets
+> A unified creative studio for designing and exporting customizable 2D social cards and animated 3D device mockups as high-resolution images or videos.
 
 - 🌙 Light/Dark Mode
 - 🪄 CI/CD (Github Action)

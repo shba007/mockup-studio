@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { FERAL_GRADIENTS } from '../constants/gradients'
+import { PLATFORM_PRESETS } from '../constants/presets'
 import type {
   SceneAnimationConfig,
   Project2DConfig,
@@ -35,6 +36,24 @@ const activeGradientId = computed(
     (props.overrides.background as string) ??
     (is2D.value ? config2D.value.background.value : 'iridescent-cloud'),
 )
+
+// Active resolution presets
+const currentWidth = computed(
+  () => (props.overrides.outputWidth as number) ?? props.config.output.width,
+)
+const currentHeight = computed(
+  () => (props.overrides.outputHeight as number) ?? props.config.output.height,
+)
+
+function selectPlatformPreset(w: number, h: number) {
+  emit('updateOverride', 'outputWidth', w)
+  emit('updateOverride', 'outputHeight', h)
+}
+
+function resetToDefaultResolution() {
+  emit('updateOverride', 'outputWidth', props.config.output.width)
+  emit('updateOverride', 'outputHeight', props.config.output.height)
+}
 
 const currentText = computed({
   get: () => (props.overrides.text as string) ?? config2D.value.content.text,
@@ -80,7 +99,7 @@ const currentChassisColor = computed({
 const fitOptions = [
   { id: 'fit', label: 'Fit' },
   { id: 'cover', label: 'Cover' },
-  { id: 'stretch', label: 'Streach' },
+  { id: 'stretch', label: 'Stretch' },
 ] as const
 
 function conicStyle(colors: [string, string, string, string]) {
@@ -144,7 +163,7 @@ function handleFileUpload(event: Event) {
           "
           @click="activeTab = 'settings'"
         >
-          Settings
+          Export Size
         </button>
       </div>
 
@@ -158,6 +177,7 @@ function handleFileUpload(event: Event) {
     </div>
 
     <div class="flex flex-1 flex-col gap-4 overflow-y-auto p-4 text-xs font-sans">
+      <!-- DESIGN TAB -->
       <template v-if="activeTab === 'design'">
         <div class="flex flex-col gap-2">
           <div class="flex items-center justify-between">
@@ -266,6 +286,7 @@ function handleFileUpload(event: Event) {
         </template>
       </template>
 
+      <!-- CONTENT TAB -->
       <template v-else-if="activeTab === 'content' && is2D">
         <div class="flex flex-col gap-1.5">
           <label class="text-[11px] font-medium text-zinc-400">Content / Question</label>
@@ -316,9 +337,50 @@ function handleFileUpload(event: Event) {
         </div>
       </template>
 
+      <!-- SETTINGS & PLATFORM PRESETS TAB -->
       <template v-else>
-        <template v-if="!is2D">
+        <div class="flex flex-col gap-2">
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] font-bold uppercase tracking-wider text-zinc-400"
+              >Platform Export Presets</span
+            >
+            <button
+              type="button"
+              class="text-[10px] font-semibold text-blue-400 hover:underline"
+              @click="resetToDefaultResolution"
+            >
+              Reset Default
+            </button>
+          </div>
+
           <div class="flex flex-col gap-1.5">
+            <button
+              v-for="preset in PLATFORM_PRESETS"
+              :key="preset.id"
+              type="button"
+              class="flex cursor-pointer items-center justify-between rounded-xl border px-3 py-2 transition"
+              :class="
+                currentWidth === preset.width && currentHeight === preset.height
+                  ? 'border-white/40 bg-white/15 text-white'
+                  : 'border-white/5 bg-black/30 text-zinc-300 hover:border-white/20 hover:bg-black/50'
+              "
+              @click="selectPlatformPreset(preset.width, preset.height)"
+            >
+              <div class="flex flex-col text-left">
+                <span class="font-medium text-[11px]">{{ preset.name }}</span>
+                <span class="text-[9px] text-zinc-400"
+                  >{{ preset.width }} × {{ preset.height }}</span
+                >
+              </div>
+              <span class="rounded-md bg-white/10 px-2 py-0.5 text-[9px] font-mono text-zinc-300">
+                {{ preset.aspectLabel }}
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <template v-if="!is2D">
+          <div class="flex flex-col gap-1.5 border-t border-white/10 pt-3">
             <label class="text-[11px] font-medium text-zinc-400">Chassis Color</label>
             <div class="flex items-center gap-2">
               <input
@@ -334,8 +396,9 @@ function handleFileUpload(event: Event) {
             </div>
           </div>
         </template>
+
         <div class="rounded-xl border border-white/5 bg-white/[0.02] p-3 text-zinc-400 text-[11px]">
-          Resolution: {{ config.output.width }} × {{ config.output.height }}
+          Output: <strong class="text-white">{{ currentWidth }} × {{ currentHeight }}</strong>
           <br />
           Format: {{ config.kind?.toUpperCase() }} · {{ config.mode?.toUpperCase() }}
         </div>

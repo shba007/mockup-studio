@@ -2,24 +2,48 @@ export type ProjectKind = '2d' | '3d'
 export type ProjectMode = 'static' | 'animated'
 export type ScreenFitMode = 'fit' | 'cover' | 'stretch'
 
+export type CardType =
+  | 'terminal'
+  | 'window'
+  | 'card'
+  | 'browser'
+  | 'viewfinder'
+  | 'slate'
+  | 'screenplay'
+
 export interface CardWindowSettings {
-  type: 'terminal' | 'window' | 'card' | 'browser'
+  type: CardType
   title?: string
   showControls?: boolean
   borderRadius?: number
   padding?: number
   maxWidth?: number
   shadowBlur?: number
+
+  // Media & Production House Additions (Configured directly in JSON)
+  timecode?: string
+  fpsBadge?: string
+  aspectGuide?: string
+  cameraSpec?: string
+  lensSpec?: string
+  sceneData?: {
+    roll?: string
+    scene?: string
+    take?: string
+  }
 }
 
 export interface CardContentSettings {
   text: string
+  character?: string
+  parenthetical?: string
   fontSize?: number
   lineHeight?: number
   fontFamily?: string
   showLineNumbers?: boolean
   metaLeft?: string
   metaRight?: string
+  align?: 'left' | 'center'
 }
 
 export interface BackgroundStyleConfig {
