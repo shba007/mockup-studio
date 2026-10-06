@@ -6,37 +6,47 @@ import { save } from '@tauri-apps/plugin-dialog'
 import { writeFile } from '@tauri-apps/plugin-fs'
 
 import MockupScene from './components/MockupScene.vue'
+import StageRenderer2D from './components/StageRenderer2D.vue'
 import TimelinePanel from './components/TimelinePanel.vue'
-import { useAppUpdater } from './composables/useAppUpdater'
+import EditorPanel from './components/EditorPanel.vue'
 
 import templates from './templates'
-import type { SceneAnimationConfig } from './utils/types'
+import type { SceneAnimationConfig, Project2DConfig, Project3DConfig } from './utils/types'
 
-const { version } = useAppUpdater({ checkOnStartup: true, autoInstall: true })
 const { top, right, bottom, left } = useScreenSafeArea()
 
-const selectedTemplateKey = ref('Macbook Podium Showcase')
+const selectedTemplateKey = ref('Terminal Question Card (2D)')
 const config = ref<SceneAnimationConfig>(
   templates[selectedTemplateKey.value] as SceneAnimationConfig,
 )
 const overrides = ref<Record<string, unknown>>({})
 const isReady = ref(false)
 const currentFrame = ref(0)
-const isPlaying = ref(true)
+const isPlaying = ref(false)
 const showTimeline = ref(false)
+const showEditor = ref(true)
 const isExporting = ref(false)
 const exportProgress = ref(0)
-const exportStatus = ref('Rendering Frames...')
+const exportStatus = ref('Processing...')
 
 let animationFrameId: number | null = null
 let lastTimestamp = 0
 
-const durationFrames = computed(() => config.value?.output?.durationFrames || 120)
-const fps = computed(() => config.value?.output?.fps || 60)
+const is2D = computed(() => config.value.kind === '2d')
+const isStatic = computed(() => config.value.mode === 'static')
+
+const durationFrames = computed(() => config.value.output.durationFrames ?? 120)
+const fps = computed(() => config.value.output.fps ?? 60)
 
 function handleTemplateChange() {
   config.value = templates[selectedTemplateKey.value] as SceneAnimationConfig
+  overrides.value = {}
   currentFrame.value = 0
+  isPlaying.value = !isStatic.value
+}
+
+function handleOverride(key: string, val: unknown) {
+  overrides.value = { ...overrides.value, [key]: val }
 }
 
 function seek(frame: number) {
@@ -44,7 +54,7 @@ function seek(frame: number) {
 }
 
 function togglePlay() {
-  if (isExporting.value) return
+  if (isExporting.value || isStatic.value) return
   isPlaying.value = !isPlaying.value
   lastTimestamp = 0
 }
@@ -54,14 +64,53 @@ function loop(timestamp: number) {
   const delta = (timestamp - lastTimestamp) / 1000
   lastTimestamp = timestamp
 
-  if (isPlaying.value && !isExporting.value) {
+  if (isPlaying.value && !isExporting.value && !isStatic.value) {
     currentFrame.value = (currentFrame.value + delta * fps.value) % durationFrames.value
   }
 
   animationFrameId = requestAnimationFrame(loop)
 }
 
-async function exportSequence() {
+async function saveExportFile(
+  fileName: string,
+  data: Uint8Array,
+  mimeType: string,
+  filterName: string,
+  ext: string,
+) {
+  if ('__TAURI_INTERNALS__' in window) {
+    try {
+      const filePath = await save({
+        defaultPath: fileName,
+        filters: [{ name: filterName, extensions: [ext] }],
+      })
+      if (filePath) await writeFile(filePath, data)
+    } catch {
+      alert('Failed to save file.')
+    }
+  } else {
+    const blob = new Blob([data as unknown as BlobPart], { type: mimeType })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = fileName
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+}
+
+async function exportStaticImage() {
+  const canvas = document.querySelector('canvas') as HTMLCanvasElement
+  if (!canvas) return
+
+  canvas.toBlob(async (blob) => {
+    if (!blob) return
+    const buffer = new Uint8Array(await blob.arrayBuffer())
+    await saveExportFile(`${config.value.id}.png`, buffer, 'image/png', 'PNG Image', 'png')
+  }, 'image/png')
+}
+
+async function exportVideoSequence() {
   const canvas = document.querySelector('canvas') as HTMLCanvasElement
   if (!canvas) return
 
@@ -96,36 +145,13 @@ async function exportSequence() {
   }
 
   await output.finalize()
-
-  const defaultFileName = `${config.value.id || 'mockup'}.mp4`
-  const isTauri = '__TAURI_INTERNALS__' in window
-
-  if (isTauri) {
-    // 1. Native Tauri Mobile & Desktop Save
-    try {
-      const filePath = await save({
-        defaultPath: defaultFileName,
-        filters: [{ name: 'MP4 Video', extensions: ['mp4'] }],
-      })
-
-      if (filePath) {
-        const uint8Data = new Uint8Array(target.buffer!)
-        await writeFile(filePath, uint8Data)
-      }
-    } catch (error) {
-      console.error('Failed to save file:', error)
-      alert('Failed to save video.')
-    }
-  } else {
-    // 2. Fallback for pure Web Browser usage
-    const mp4Blob = new Blob([target.buffer!], { type: 'video/mp4' })
-    const url = URL.createObjectURL(mp4Blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = defaultFileName
-    a.click()
-    URL.revokeObjectURL(url)
-  }
+  await saveExportFile(
+    `${config.value.id}.mp4`,
+    new Uint8Array(target.buffer!),
+    'video/mp4',
+    'MP4 Video',
+    'mp4',
+  )
 
   exportProgress.value = 100
   setTimeout(() => {
@@ -133,21 +159,23 @@ async function exportSequence() {
   }, 800)
 }
 
+function handleExport() {
+  if (isStatic.value) {
+    exportStaticImage()
+  } else {
+    exportVideoSequence()
+  }
+}
+
 function handleKeydown(e: KeyboardEvent) {
-  if (e.key.toLowerCase() === 't') {
+  if (e.key.toLowerCase() === 't' && !isStatic.value) {
     showTimeline.value = !showTimeline.value
   }
 }
 
 onMounted(() => {
-  const globalPayload = (window as unknown as { __RENDER_PAYLOAD__?: Record<string, unknown> })
-    .__RENDER_PAYLOAD__
-  if (globalPayload) {
-    if (globalPayload.template) config.value = globalPayload.template as SceneAnimationConfig
-    if (globalPayload.overrides) overrides.value = globalPayload.overrides
-  }
-
   isReady.value = true
+  isPlaying.value = !isStatic.value
   window.addEventListener('keydown', handleKeydown)
   animationFrameId = requestAnimationFrame(loop)
 })
@@ -159,81 +187,123 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="relative flex h-screen w-screen items-center justify-center overflow-hidden bg-black">
-    <div
+  <div
+    class="relative flex h-screen w-screen items-center justify-center overflow-hidden bg-[#0d0e15] font-sans"
+  >
+    <header
       v-if="!isExporting && isReady"
-      class="absolute z-50 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-0 pointer-events-none"
+      class="absolute z-50 flex items-center justify-between pointer-events-none"
       :style="{
-        top: `calc(0.25rem + ${top})`,
-        left: `calc(0.25rem + ${left})`,
-        right: `calc(1rem + ${right})`,
+        top: `calc(1rem + ${top})`,
+        left: `calc(1.25rem + ${left})`,
+        right: `calc(1.25rem + ${right})`,
       }"
     >
-      <div class="pointer-events-auto w-full sm:w-auto flex justify-center sm:justify-start">
+      <div class="pointer-events-auto"></div>
+
+      <div class="pointer-events-auto flex items-center gap-2">
         <select
           v-model="selectedTemplateKey"
           @change="handleTemplateChange"
-          class="cursor-pointer appearance-none rounded-lg border border-white/10 bg-[#121218]/85 px-4 py-2 font-mono text-[13px] text-slate-200 shadow-2xl backdrop-blur-md outline-none transition-colors hover:border-white/25 focus:border-indigo-500/50 max-w-[250px] truncate"
+          class="cursor-pointer rounded-full border border-white/10 bg-[#1c1d27]/90 px-4 py-1.5 font-sans text-xs font-medium text-zinc-200 shadow-xl backdrop-blur-md outline-none transition hover:border-white/20"
         >
           <option
             v-for="key in Object.keys(templates)"
             :key="key"
             :value="key"
-            class="bg-[#121218] text-slate-200"
+            class="bg-[#1c1d27] text-zinc-200"
           >
             {{ key }}
           </option>
         </select>
-      </div>
-
-      <div class="flex items-center gap-2 pointer-events-auto">
-        <button
-          class="cursor-pointer rounded-lg border border-white/10 bg-[#121218]/85 px-3 py-2 font-mono text-[13px] text-slate-200 shadow-2xl backdrop-blur-md transition-colors hover:border-white/25 active:scale-95"
-          @click="showTimeline = !showTimeline"
-        >
-          {{ showTimeline ? '✕ Hide Timeline' : '⏱ Timeline' }}
-        </button>
 
         <button
-          class="cursor-pointer rounded-lg bg-indigo-600 px-4 py-2 font-mono text-[13px] font-semibold text-white shadow-2xl transition-colors hover:bg-indigo-500 active:scale-95"
-          @click="exportSequence"
+          type="button"
+          class="cursor-pointer rounded-full border border-white/10 bg-[#1c1d27]/90 px-3.5 py-1.5 text-xs font-semibold text-zinc-200 shadow-xl backdrop-blur-md transition hover:border-white/20 active:scale-95"
+          @click="showEditor = !showEditor"
         >
-          📷 Export Video
+          {{ showEditor ? '✕ Hide Controls' : '🎨 Studio' }}
         </button>
       </div>
-    </div>
+    </header>
 
     <div
       v-if="isExporting"
-      class="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/85 font-mono text-white backdrop-blur-md"
+      class="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/85 font-sans text-white backdrop-blur-md"
     >
-      <div
-        class="mb-6 h-10 w-10 animate-spin rounded-full border-4 border-white/10 border-t-indigo-500"
-      ></div>
+      <div class="mb-6 size-10 animate-spin rounded-full border-4 border-white/10 border-t-white" />
       <h2 class="text-base font-medium tracking-wide">{{ exportStatus }}</h2>
-      <div class="my-4 h-2 w-[300px] overflow-hidden rounded-full bg-[#333]">
+      <div class="my-4 h-2 w-[300px] overflow-hidden rounded-full bg-zinc-800">
         <div
-          class="h-full bg-indigo-500 transition-[width] duration-100 ease-linear"
+          class="h-full bg-white transition-[width] duration-100 ease-linear"
           :style="{ width: `${exportProgress}%` }"
-        ></div>
+        />
       </div>
       <p class="text-sm text-zinc-400">{{ exportProgress }}% Complete</p>
     </div>
 
-    <Suspense>
+    <StageRenderer2D
+      v-if="isReady && is2D"
+      :key="`2d-${config.id}`"
+      :config="config as Project2DConfig"
+      :overrides="overrides"
+      :current-frame="currentFrame"
+    />
+
+    <Suspense v-else-if="isReady">
       <MockupScene
-        v-if="isReady"
-        :key="config.id"
-        :config="config"
+        :key="`3d-${config.id}`"
+        :config="config as Project3DConfig"
         :overrides="overrides"
         :current-frame="currentFrame"
       />
       <template #fallback>
-        <div class="flex h-screen items-center justify-center font-mono text-white">
+        <div class="flex h-screen items-center justify-center font-sans text-white">
           Loading 3D Engine...
         </div>
       </template>
     </Suspense>
+
+    <EditorPanel
+      v-if="showEditor && isReady && !isExporting"
+      :config="config"
+      :overrides="overrides"
+      @update-override="handleOverride"
+      @close="showEditor = false"
+    />
+
+    <footer
+      v-if="!isExporting && isReady"
+      class="absolute z-40 flex items-center justify-between rounded-full border border-white/10 bg-[#161720]/80 px-4 py-2 font-sans text-xs text-zinc-300 shadow-2xl backdrop-blur-xl"
+      :style="{ bottom: `calc(1.25rem + ${bottom})`, width: 'min(92vw, 840px)' }"
+    >
+      <div class="flex items-center gap-2 truncate">
+        <span class="font-semibold text-white">{{ config.name || config.id }}</span>
+        <span class="text-zinc-500">·</span>
+        <span class="text-zinc-400 uppercase tracking-wider text-[10px]"
+          >{{ config.kind }} {{ config.mode }}</span
+        >
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button
+          v-if="!isStatic"
+          type="button"
+          class="cursor-pointer rounded-full bg-white/10 px-3 py-1 font-semibold text-white transition hover:bg-white/20 active:scale-95"
+          @click="showTimeline = !showTimeline"
+        >
+          {{ showTimeline ? '✕ Timeline' : '⏱ Timeline' }}
+        </button>
+
+        <button
+          type="button"
+          class="cursor-pointer rounded-full bg-white px-4 py-1.5 font-bold text-zinc-950 shadow transition hover:bg-zinc-200 active:scale-95"
+          @click="handleExport"
+        >
+          {{ isStatic ? 'Export' : 'Render Video' }}
+        </button>
+      </div>
+    </footer>
 
     <Transition
       enter-active-class="transition-all duration-200 ease-out"
@@ -244,8 +314,8 @@ onUnmounted(() => {
       leave-to-class="opacity-0 translate-y-4"
     >
       <TimelinePanel
-        v-show="showTimeline && isReady && !isExporting"
-        :style="{ bottom: `calc(1.5rem + ${bottom})` }"
+        v-show="showTimeline && isReady && !isExporting && !isStatic"
+        :style="{ bottom: `calc(5rem + ${bottom})` }"
         :current-frame="currentFrame"
         :duration-frames="durationFrames"
         :fps="fps"

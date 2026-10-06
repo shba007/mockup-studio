@@ -1,6 +1,33 @@
-// ============================================================================
-// Core Math & Animation Primitives
-// ============================================================================
+export type ProjectKind = '2d' | '3d'
+export type ProjectMode = 'static' | 'animated'
+export type ScreenFitMode = 'fit' | 'cover' | 'stretch'
+
+export interface CardWindowSettings {
+  type: 'terminal' | 'window' | 'card' | 'browser'
+  title?: string
+  showControls?: boolean
+  borderRadius?: number
+  padding?: number
+  maxWidth?: number
+  shadowBlur?: number
+}
+
+export interface CardContentSettings {
+  text: string
+  fontSize?: number
+  lineHeight?: number
+  fontFamily?: string
+  showLineNumbers?: boolean
+  metaLeft?: string
+  metaRight?: string
+}
+
+export interface BackgroundStyleConfig {
+  type: 'gradient' | 'solid' | 'mesh'
+  value: string
+  blur?: number
+  noise?: boolean
+}
 
 export type Vector3Tuple = [x: number, y: number, z: number]
 export type Vector2Tuple = [x: number, y: number]
@@ -25,10 +52,6 @@ export interface Keyframe<T> {
 }
 
 export type KeyframeTrack<T> = Keyframe<T>[]
-
-// ============================================================================
-// Lighting, Shadows & Post-Processing
-// ============================================================================
 
 export interface AmbientLightConfig {
   intensity?: number
@@ -77,10 +100,6 @@ export interface ContactShadowsConfig {
   resolution?: number
 }
 
-// ============================================================================
-// Textures, Materials & Stage Primitives
-// ============================================================================
-
 export interface TextureTransform {
   rotation?: number
   flipX?: boolean
@@ -110,10 +129,6 @@ export interface StagePrimitiveElement {
   material?: MaterialProperties & { type?: 'basic' | 'standard' }
 }
 
-// ============================================================================
-// Scene Objects (Devices, Podiums, Props)
-// ============================================================================
-
 export interface NodeKeyframeTracks {
   position?: KeyframeTrack<Vector3Tuple>
   rotation?: KeyframeTrack<Vector3Tuple>
@@ -141,13 +156,10 @@ export interface SceneObject {
   }
   screenMedia?: string
   screenTransform?: TextureTransform
+  screenFit?: ScreenFitMode
   materials?: Record<string, MaterialProperties>
   keyframes?: ObjectKeyframes
 }
-
-// ============================================================================
-// Camera & Root Configuration
-// ============================================================================
 
 export interface CameraKeyframes {
   position?: KeyframeTrack<Vector3Tuple>
@@ -163,8 +175,8 @@ export interface CameraConfig {
 export interface RenderOutputConfig {
   width: number
   height: number
-  fps: number
-  durationFrames: number
+  fps?: number
+  durationFrames?: number
 }
 
 export interface SceneVariables {
@@ -173,12 +185,34 @@ export interface SceneVariables {
   backgroundGradient?: string
   backgroundColor?: string
   screenTransform?: TextureTransform
+  screenFit?: ScreenFitMode
   [customVar: string]: unknown
 }
 
-export interface SceneAnimationConfig {
+export interface BaseConfig {
   id: string
+  name?: string
+  kind?: ProjectKind
+  mode?: ProjectMode
   output: RenderOutputConfig
+  background?: BackgroundStyleConfig
+}
+
+export interface Project2DConfig extends BaseConfig {
+  kind: '2d'
+  mode: 'static' | 'animated'
+  card: CardWindowSettings
+  content: CardContentSettings
+  background: BackgroundStyleConfig
+  keyframes?: {
+    scale?: KeyframeTrack<number>
+    opacity?: KeyframeTrack<number>
+  }
+}
+
+export interface Project3DConfig extends BaseConfig {
+  kind?: '3d'
+  mode?: 'animated'
   variables?: SceneVariables
   camera?: CameraConfig
   lights?: SceneLightsConfig
@@ -187,3 +221,5 @@ export interface SceneAnimationConfig {
   elements?: StagePrimitiveElement[]
   objects: SceneObject[]
 }
+
+export type SceneAnimationConfig = Project3DConfig | Project2DConfig

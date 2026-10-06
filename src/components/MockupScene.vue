@@ -1,16 +1,18 @@
 <script setup lang="ts">
-import { ref, shallowRef, watchEffect, computed, onMounted, onUnmounted } from 'vue'
+import { ref, shallowRef, watchEffect, watch, computed } from 'vue'
 import { TresCanvas } from '@tresjs/core'
 import { ContactShadows } from '@tresjs/cientos'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js'
 import * as THREE from 'three'
 import { EffectComposerPmndrs, BloomPmndrs } from '@tresjs/post-processing'
+import { useViewportScale } from '../composables/useViewportScale'
+import { FERAL_GRADIENTS } from '../constants/gradients'
 import { evaluateKeyframes } from '../utils/interpolator'
-import type { SceneAnimationConfig, TextureTransform } from '../utils/types'
+import type { Project3DConfig, TextureTransform, ScreenFitMode } from '../utils/types'
 
 const props = defineProps<{
-  config: SceneAnimationConfig
+  config: Project3DConfig
   overrides?: Record<string, unknown>
   currentFrame: number
 }>()
@@ -18,128 +20,108 @@ const props = defineProps<{
 const isMobile =
   typeof window !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
 
-const baseW = props.config.output?.width || 1920
-const baseH = props.config.output?.height || 1080
-
-const MAX_GPU_RES = isMobile ? 1024 : 4096
-const renderScale = Math.min(1, MAX_GPU_RES / Math.max(baseW, baseH))
-
-const outWidth = computed(() => Math.floor(baseW * renderScale))
-const outHeight = computed(() => Math.floor(baseH * renderScale))
-const pixelRatio = isMobile
-  ? 1
-  : Math.min(typeof window !== 'undefined' ? window.devicePixelRatio : 1, 2)
-
-const windowScale = ref(1)
-const canvasWrapperRef = ref<HTMLElement | null>(null)
-const isCanvasSized = ref(false)
-
-function updateScale() {
-  if (typeof window !== 'undefined') {
-    const scaleX = window.innerWidth / outWidth.value
-    const scaleY = window.innerHeight / outHeight.value
-    windowScale.value = Math.max(scaleX, scaleY)
-  }
-}
-
-onMounted(() => {
-  updateScale()
-  window.addEventListener('resize', updateScale)
-
-  const checkSize = () => {
-    if (canvasWrapperRef.value && canvasWrapperRef.value.clientWidth > 0) {
-      isCanvasSized.value = true
-    } else {
-      requestAnimationFrame(checkSize)
-    }
-  }
-  checkSize()
-})
-
-onUnmounted(() => {
-  window.removeEventListener('resize', updateScale)
-})
+const baseW = computed(() => props.config.output.width)
+const baseH = computed(() => props.config.output.height)
+const { containerStyle } = useViewportScale(baseW, baseH, 1.0)
+const pixelRatio = isMobile ? 1 : Math.min(window?.devicePixelRatio ?? 1, 2)
 
 const bgTexture = shallowRef<THREE.CanvasTexture>()
 
 function generateBackgroundTexture() {
   const bgCanvas = document.createElement('canvas')
-  const maxBgRes = isMobile ? 1024 : 2048
-  const bgScale = Math.min(1, maxBgRes / Math.max(outWidth.value, outHeight.value))
-
-  bgCanvas.width = Math.max(1, Math.floor(outWidth.value * bgScale))
-  bgCanvas.height = Math.max(1, Math.floor(outHeight.value * bgScale))
+  bgCanvas.width = 1024
+  bgCanvas.height = 1024
 
   const ctx = bgCanvas.getContext('2d')
   if (!ctx) return
 
-  const bg = activeBg.value
-  if (bg.includes('gradient')) {
-    const colors = bg.match(/#[a-fA-F0-9]{3,6}/g) || ['#5945ea', '#2b2b2b']
-    const cx = bgCanvas.width / 2
-    const cy = bgCanvas.height / 2
-    const r = Math.sqrt(cx * cx + cy * cy)
+  const bgVal =
+    (props.overrides?.background as string) ??
+    props.config.variables?.backgroundGradient ??
+    props.config.variables?.backgroundColor ??
+    'iridescent-cloud'
 
-    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r)
-    grad.addColorStop(0, colors[0]!)
-    grad.addColorStop(1, colors[1] || colors[0]!)
-    ctx.fillStyle = grad
+  const preset = FERAL_GRADIENTS.find((g) => g.id === bgVal)
+
+  if (preset) {
+    ctx.fillStyle = preset.baseColor
+    ctx.fillRect(0, 0, 1024, 1024)
+    for (const spot of preset.spots) {
+      const cx = 1024 * spot.x
+      const cy = 1024 * spot.y
+      const r = 1024 * spot.r
+      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r)
+      grad.addColorStop(0, spot.color)
+      grad.addColorStop(1, 'transparent')
+      ctx.fillStyle = grad
+      ctx.fillRect(0, 0, 1024, 1024)
+    }
   } else {
-    ctx.fillStyle = bg
+    ctx.fillStyle = bgVal
+    ctx.fillRect(0, 0, 1024, 1024)
   }
 
-  ctx.fillRect(0, 0, bgCanvas.width, bgCanvas.height)
   const tex = new THREE.CanvasTexture(bgCanvas)
   tex.colorSpace = THREE.SRGBColorSpace
   tex.needsUpdate = true
   bgTexture.value = tex
 }
 
-function createFallbackTexture(): THREE.CanvasTexture {
+function createDefaultTexture(): THREE.Texture {
   const canvas = document.createElement('canvas')
-  const maxDim = isMobile ? 1024 : 2048
-  const scale = Math.min(1, maxDim / 2556)
-
-  canvas.width = Math.floor(1179 * scale)
-  canvas.height = Math.floor(2556 * scale)
-
-  const ctx = canvas.getContext('2d')!
-  const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height)
-  grad.addColorStop(0, '#4f46e5')
-  grad.addColorStop(1, '#06b6d4')
-  ctx.fillStyle = grad
-  ctx.fillRect(0, 0, canvas.width, canvas.height)
-  ctx.fillStyle = '#ffffff'
-  ctx.font = `bold ${Math.floor(72 * scale)}px sans-serif`
-  ctx.textAlign = 'center'
-  ctx.fillText('App Screen Preview', canvas.width / 2, canvas.height / 2)
-
-  const texture = new THREE.CanvasTexture(canvas)
-  texture.colorSpace = THREE.SRGBColorSpace
-  return texture
+  canvas.width = 2
+  canvas.height = 2
+  const ctx = canvas.getContext('2d')
+  if (ctx) {
+    ctx.fillStyle = '#111827'
+    ctx.fillRect(0, 0, 2, 2)
+  }
+  return new THREE.CanvasTexture(canvas)
 }
 
-const texLoader = new THREE.TextureLoader()
 const textureCache = new Map<string, THREE.Texture>()
-const MAX_SAFE_TEXTURE_DIMENSION = isMobile ? 1024 : 2048
 
-async function loadAndClampImage(url: string): Promise<HTMLCanvasElement> {
+async function loadAndClampImage(
+  url: string,
+  fit: ScreenFitMode,
+  targetAspect: number,
+): Promise<HTMLCanvasElement> {
   return new Promise((resolve, reject) => {
     const img = new Image()
     img.crossOrigin = 'anonymous'
     img.onload = () => {
-      let { width, height } = img
-      if (width > MAX_SAFE_TEXTURE_DIMENSION || height > MAX_SAFE_TEXTURE_DIMENSION) {
-        const scale = MAX_SAFE_TEXTURE_DIMENSION / Math.max(width, height)
-        width = Math.floor(width * scale)
-        height = Math.floor(height * scale)
+      const maxDim = isMobile ? 1024 : 2048
+      let canvasW = maxDim
+      let canvasH = Math.round(maxDim / targetAspect)
+      if (targetAspect < 1) {
+        canvasH = maxDim
+        canvasW = Math.round(maxDim * targetAspect)
       }
 
       const canvas = document.createElement('canvas')
-      canvas.width = width
-      canvas.height = height
+      canvas.width = Math.max(2, canvasW)
+      canvas.height = Math.max(2, canvasH)
       const ctx = canvas.getContext('2d')!
-      ctx.drawImage(img, 0, 0, width, height)
+
+      if (fit === 'stretch') {
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+      } else if (fit === 'cover') {
+        const scale = Math.max(canvas.width / img.width, canvas.height / img.height)
+        const w = img.width * scale
+        const h = img.height * scale
+        const x = (canvas.width - w) / 2
+        const y = (canvas.height - h) / 2
+        ctx.drawImage(img, x, y, w, h)
+      } else {
+        ctx.fillStyle = '#000000'
+        ctx.fillRect(0, 0, canvas.width, canvas.height)
+        const scale = Math.min(canvas.width / img.width, canvas.height / img.height)
+        const w = img.width * scale
+        const h = img.height * scale
+        const x = (canvas.width - w) / 2
+        const y = (canvas.height - h) / 2
+        ctx.drawImage(img, x, y, w, h)
+      }
       resolve(canvas)
     }
     img.onerror = reject
@@ -147,17 +129,22 @@ async function loadAndClampImage(url: string): Promise<HTMLCanvasElement> {
   })
 }
 
-const loadCachedTexture = async (url?: string): Promise<THREE.Texture> => {
-  if (!url) return createFallbackTexture()
-  if (textureCache.has(url)) return textureCache.get(url)!
+const loadCachedTexture = async (
+  url?: string,
+  fit: ScreenFitMode = 'cover',
+  targetAspect = 16 / 10,
+): Promise<THREE.Texture> => {
+  if (!url) return createDefaultTexture()
+  const cacheKey = `${url}:${fit}:${targetAspect.toFixed(2)}`
+  if (textureCache.has(cacheKey)) return textureCache.get(cacheKey)!
   try {
-    const clampedCanvas = await loadAndClampImage(url)
+    const clampedCanvas = await loadAndClampImage(url, fit, targetAspect)
     const tex = new THREE.CanvasTexture(clampedCanvas)
     tex.colorSpace = THREE.SRGBColorSpace
-    textureCache.set(url, tex)
+    textureCache.set(cacheKey, tex)
     return tex
   } catch {
-    return createFallbackTexture()
+    return createDefaultTexture()
   }
 }
 
@@ -196,18 +183,14 @@ const cameraPosition = ref<[number, number, number]>([0, 0, 4.2])
 const cameraRotation = ref<[number, number, number]>([0, 0, 0])
 
 const hasCameraRotation = computed(() => !!props.config.camera?.keyframes?.rotation)
-const objectsConfig = computed(() => props.config.objects || [])
+const objectsConfig = computed(() => props.config.objects ?? [])
 
 const activeScreenMedia = computed(
-  () => (props.overrides?.screenMedia || props.config.variables?.screenMedia) as string | undefined,
+  () => ((props.overrides?.screenMedia ?? props.config.variables?.screenMedia) as string) ?? '',
 )
 
-const activeBg = computed(
-  () =>
-    (props.overrides?.backgroundColor ||
-      props.config.variables?.backgroundGradient ||
-      props.config.variables?.backgroundColor ||
-      '#0d0f12') as string,
+const activeScreenFit = computed(
+  () => (props.overrides?.screenFit as ScreenFitMode | undefined) ?? 'cover',
 )
 
 generateBackgroundTexture()
@@ -225,10 +208,76 @@ const loadCachedModel = async (url: string) => {
 const sceneInstances = shallowRef<
   { group: THREE.Group; initialTransforms: Map<string, unknown> }[]
 >([])
+const screenEntries = shallowRef<
+  { mat: THREE.MeshStandardMaterial; transform?: TextureTransform; aspect: number }[]
+>([])
+const chassisMaterials = shallowRef<THREE.MeshStandardMaterial[]>([])
 const objectPositions = ref<[number, number, number][]>([])
 const objectRotations = ref<[number, number, number][]>([])
 
+function getScreenAspect(mesh: THREE.Mesh): number {
+  const geo = mesh.geometry
+  if (!geo.attributes.position || !geo.attributes.uv) return 16 / 10
+  const pos = geo.attributes.position
+  const uv = geo.attributes.uv
+  const idx = geo.index
+  const tris = Math.min(idx ? idx.count / 3 : pos.count / 3, 20)
+  let uDist = 0,
+    vDist = 0,
+    count = 0
+  const pA = new THREE.Vector3(),
+    pB = new THREE.Vector3(),
+    pC = new THREE.Vector3()
+  const uvA = new THREE.Vector2(),
+    uvB = new THREE.Vector2(),
+    uvC = new THREE.Vector2()
+  for (let i = 0; i < tris; i++) {
+    const iA = idx ? idx.getX(i * 3) : i * 3
+    const iB = idx ? idx.getX(i * 3 + 1) : i * 3 + 1
+    const iC = idx ? idx.getX(i * 3 + 2) : i * 3 + 2
+    pA.fromBufferAttribute(pos, iA)
+    pB.fromBufferAttribute(pos, iB)
+    pC.fromBufferAttribute(pos, iC)
+    uvA.fromBufferAttribute(uv, iA)
+    uvB.fromBufferAttribute(uv, iB)
+    uvC.fromBufferAttribute(uv, iC)
+    const du1 = uvB.x - uvA.x,
+      dv1 = uvB.y - uvA.y
+    const du2 = uvC.x - uvA.x,
+      dv2 = uvC.y - uvA.y
+    const det = du1 * dv2 - du2 * dv1
+    if (Math.abs(det) > 1e-4) {
+      const dp1 = new THREE.Vector3().subVectors(pB, pA)
+      const dp2 = new THREE.Vector3().subVectors(pC, pA)
+      uDist += new THREE.Vector3()
+        .copy(dp1)
+        .multiplyScalar(dv2)
+        .sub(dp2.clone().multiplyScalar(dv1))
+        .divideScalar(det)
+        .length()
+      vDist += new THREE.Vector3()
+        .copy(dp2)
+        .multiplyScalar(du1)
+        .sub(dp1.clone().multiplyScalar(du2))
+        .divideScalar(det)
+        .length()
+      count++
+    }
+  }
+  if (count > 0 && vDist > 0) return uDist / vDist
+  if (!geo.boundingBox) geo.computeBoundingBox()
+  const s = geo.boundingBox!.getSize(new THREE.Vector3())
+  const sorted = [s.x, s.y, s.z].sort((a, b) => b - a)
+  return (sorted[0] ?? 16) / (sorted[1] ?? 10)
+}
+
 const instancesTemp = []
+const screenEntriesTemp: {
+  mat: THREE.MeshStandardMaterial
+  transform?: TextureTransform
+  aspect: number
+}[] = []
+const chassisMatsTemp: THREE.MeshStandardMaterial[] = []
 const positionsTemp = []
 const rotationsTemp = []
 
@@ -255,22 +304,14 @@ for (let i = 0; i < objectsConfig.value.length; i++) {
   const wrapperGroup = new THREE.Group()
   wrapperGroup.add(scene)
 
-  const targetMedia = objConf.screenMedia || activeScreenMedia.value
-  const baseTex = await loadCachedTexture(targetMedia)
-  const uvTransform =
-    objConf.screenTransform ||
-    props.overrides?.screenTransform ||
-    props.config.variables?.screenTransform
-  const screenTexture = applyTextureTransform(baseTex, uvTransform)
+  const targetMedia = objConf.screenMedia ?? activeScreenMedia.value
+  const uvTransform = objConf.screenTransform ?? props.config.variables?.screenTransform
 
   const initialTransforms = new Map()
   const targetScreen = objConf.meshBindings?.screen
   const targetChassis = objConf.meshBindings?.chassis
   const chassisColor =
-    (props.overrides?.chassisColor as string) ||
-    objConf.materials?.chassis?.color ||
-    (props.config.variables?.chassisColor as string) ||
-    '#242426'
+    (props.overrides?.chassisColor as string) ?? props.config.variables?.chassisColor ?? '#242426'
 
   scene.traverse((child: THREE.Object3D) => {
     initialTransforms.set(child.name, {
@@ -301,20 +342,28 @@ for (let i = 0; i < objectsConfig.value.length; i++) {
             mapName.includes(targetChassis)))
 
       if (isScreen) {
-        mesh.material = new THREE.MeshStandardMaterial({
+        const aspect = getScreenAspect(mesh)
+        const mat = new THREE.MeshStandardMaterial({
           color: new THREE.Color(0x000000),
-          emissiveMap: screenTexture,
           emissive: new THREE.Color(0xffffff),
           emissiveIntensity: objConf.materials?.screen?.emissiveIntensity ?? 1.2,
           roughness: objConf.materials?.screen?.roughness ?? 0.05,
           metalness: 0.0,
         })
+        loadCachedTexture(targetMedia, activeScreenFit.value, aspect).then((baseTex) => {
+          mat.emissiveMap = applyTextureTransform(baseTex, uvTransform)
+          mat.needsUpdate = true
+        })
+        mesh.material = mat
+        screenEntriesTemp.push({ mat, transform: uvTransform, aspect })
       } else if (isChassis) {
-        mesh.material = new THREE.MeshStandardMaterial({
+        const mat = new THREE.MeshStandardMaterial({
           color: new THREE.Color(chassisColor),
           metalness: objConf.materials?.chassis?.metalness ?? 0.85,
           roughness: objConf.materials?.chassis?.roughness ?? 0.25,
         })
+        mesh.material = mat
+        chassisMatsTemp.push(mat)
       }
     }
   })
@@ -324,9 +373,35 @@ for (let i = 0; i < objectsConfig.value.length; i++) {
   rotationsTemp.push([0, 0, 0])
 }
 
+screenEntries.value = screenEntriesTemp
+chassisMaterials.value = chassisMatsTemp
 sceneInstances.value = instancesTemp
 objectPositions.value = positionsTemp as [number, number, number][]
 objectRotations.value = rotationsTemp as [number, number, number][]
+
+async function updateScreenTextures() {
+  const media = activeScreenMedia.value
+  if (!media) return
+  for (const entry of screenEntries.value) {
+    const baseTex = await loadCachedTexture(media, activeScreenFit.value, entry.aspect)
+    entry.mat.emissiveMap = applyTextureTransform(baseTex, entry.transform)
+    entry.mat.needsUpdate = true
+  }
+}
+
+watch([activeScreenMedia, activeScreenFit], updateScreenTextures)
+
+watch(
+  () => props.overrides?.chassisColor,
+  (newColor) => {
+    if (!newColor) return
+    chassisMaterials.value.forEach((mat) => {
+      mat.color.set(newColor as string)
+    })
+  },
+)
+
+watch(() => props.overrides?.background, generateBackgroundTexture)
 
 watchEffect(() => {
   const frame = props.currentFrame
@@ -443,16 +518,7 @@ const elementsConfig = computed(() => props.config.elements || [])
 </script>
 
 <template>
-  <div
-    ref="canvasWrapperRef"
-    v-if="outWidth > 0 && outHeight > 0"
-    class="absolute top-1/2 left-1/2 origin-center overflow-hidden"
-    :style="{
-      width: `${outWidth}px`,
-      height: `${outHeight}px`,
-      transform: `translate(-50%, -50%) scale(${windowScale})`,
-    }"
-  >
+  <div class="absolute top-1/2 left-1/2 origin-center overflow-hidden" :style="containerStyle">
     <TresCanvas
       :pixel-ratio="pixelRatio"
       :output-color-space="THREE.SRGBColorSpace"
@@ -465,8 +531,8 @@ const elementsConfig = computed(() => props.config.elements || [])
         ref="cameraRef"
         :position="cameraPosition"
         :rotation="cameraRotation"
-        :aspect="outWidth / outHeight"
-        :fov="config.camera?.fov || 34"
+        :aspect="baseW / baseH"
+        :fov="config.camera?.fov ?? 34"
       />
 
       <TresPerspectiveCamera
@@ -474,8 +540,8 @@ const elementsConfig = computed(() => props.config.elements || [])
         ref="cameraRef"
         :position="cameraPosition"
         :look-at="config.camera?.lookAt ?? [0, 0, 0]"
-        :aspect="outWidth / outHeight"
-        :fov="config.camera?.fov || 34"
+        :aspect="baseW / baseH"
+        :fov="config.camera?.fov ?? 34"
       />
 
       <TresAmbientLight :intensity="ambientLight.intensity" :color="ambientLight.color" />
@@ -546,7 +612,7 @@ const elementsConfig = computed(() => props.config.elements || [])
         :rotation="objectRotations[index]"
       />
 
-      <EffectComposerPmndrs v-if="!isMobile && isCanvasSized" :multisampling="4">
+      <EffectComposerPmndrs v-if="!isMobile" :multisampling="4">
         <BloomPmndrs
           :intensity="bloomConfig.intensity"
           :luminance-threshold="bloomConfig.luminanceThreshold"

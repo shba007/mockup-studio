@@ -1,0 +1,30 @@
+{
+  "id": "terminal-question-card",
+  "name": "Terminal Question Card (2D)",
+  "kind": "2d",
+  "mode": "static",
+  "output": {
+    "width": 1200,
+    "height": 540
+  },
+  "background": {
+    "type": "gradient",
+    "value": "iridescent-cloud"
+  },
+  "card": {
+    "type": "terminal",
+    "title": "~/lorem.md",
+    "showControls": true,
+    "borderRadius": 24,
+    "padding": 28,
+    "maxWidth": 1050
+  },
+  "content": {
+    "text": "lorem ipsum dolor sit amet consectetur adipiscing elit assumenda dolore blanditiis aut dolore occaecat in",
+    "fontSize": 21,
+    "lineHeight": 36,
+    "showLineNumbers": true,
+    "metaLeft": "loram",
+    "metaRight": "asked 2 weeks ago"
+  }
+}
