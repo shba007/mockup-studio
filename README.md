@@ -6,7 +6,7 @@
 
 ![Landing](public/previews/landing.webp)
 
-> A unified creative studio for designing and exporting customizable 2D social cards and animated 3D device mockups as high-resolution images or videos.
+> A unified creative studio for designing and exporting customizable 2D social cards and animated 3D device mockups as high-resolution images or videos
 
 - 🌙 Light/Dark Mode
 - 🪄 CI/CD (Github Action)
