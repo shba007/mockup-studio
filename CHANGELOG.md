@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.1.5
+
+[compare changes](https://github.com/shba007/mockup-studio/compare/v0.1.4...v0.1.5)
+
+### 🏡 Chore
+
+- Update Rust edition and version, and upgrade Tauri dependencies ([e1d34cc](https://github.com/shba007/mockup-studio/commit/e1d34cc))
+
+### ❤️ Contributors
+
+- Shirsendu Bairagi ([@shba007](https://github.com/shba007))
+
 ## v0.1.4
 
 [compare changes](https://github.com/shba007/mockup-studio/compare/v0.1.3...v0.1.4)
