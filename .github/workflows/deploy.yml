@@ -67,7 +67,7 @@ jobs:
             'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
       - name: 🛠️ Setup Vite-Plus
-        uses: voidzero-dev/setup-vp@v1
+        uses: voidzero-dev/setup-vp@v1.21.1
         with:
           node-version: 'lts/*'
           cache: true
