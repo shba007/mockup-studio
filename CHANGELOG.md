@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.1.6
+
+[compare changes](https://github.com/shba007/mockup-studio/compare/v0.1.5...v0.1.6)
+
+### 💅 Refactors
+
+- Remove convert-markdown.sh script and update dependencies ([9b93eb1](https://github.com/shba007/mockup-studio/commit/9b93eb1))
+
+### ❤️ Contributors
+
+- Shirsendu Bairagi ([@shba007](https://github.com/shba007))
+
 ## v0.1.5
 
 [compare changes](https://github.com/shba007/mockup-studio/compare/v0.1.4...v0.1.5)
